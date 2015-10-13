@@ -7,20 +7,24 @@ using System.Threading.Tasks;
 
 namespace LangDetector.Core
 {
+    /// <summary>
+    /// Clase Parser que se encarga unicamente de leer un archivo de texto
+    /// extraer las letras que este contenga y la cantidad de veces que cada
+    /// letra aparece en el documento.
+    /// </summary>
     public class Parser
     {
         // Cantidad de bytes que se leeran a la vez cuando se analiza un archivo.
         // Asi si el archivo es muy grande no se carga todo a memoria, sino que
-        // solo se carga en pedazos de 1024 bytes.
-        private const int bufferSize = 1024;
-
-        // Cantidad de letras distintas que puede entender nuestro algoritmo
-        // ver la función Considerar para mas detalles.
-        private const int capacity = 85;
+        // solo se carga en pedazos de 4096 bytes.
+        private const int bufferSize = 4096;
 
         // Diccionario que contendrá el ascii de cada letra que tiene el archivo
         // y la cantidad de veces que esta aparece en el mismo.
-        private readonly IDictionary<int, int> letras;
+        private readonly IDictionary<char, int> letras;
+
+        // Cantidad de letras que posee el documento.
+        private int totalLetras;
 
         // Stream que permite acceder al archivo para leerlo.
         private readonly Stream archivo;
@@ -28,6 +32,9 @@ namespace LangDetector.Core
         // Tamaño del archvio en bytes.
         private readonly long pesoArchivo;
 
+        // Evento al que se pueden suscribir quienes utilicen la clase Parser
+        // para ir notificando el avance, por ejemplo para mostrar un progressbar
+        // en la Interfaz Gráfica
         public event EventHandler<BytesLeidosEventArgs> BytesLeidos;
 
         /// <summary>
@@ -38,11 +45,11 @@ namespace LangDetector.Core
         {
             this.archivo = archivo;
             pesoArchivo = archivo.Length;
-            letras = new Dictionary<int, int>(capacity);
+            letras = new Dictionary<char, int>();
         }
 
         /// <summary>
-        /// Lee el archivo en pedazos de 1024 bytes, y llena el diccionario indicando
+        /// Lee el archivo en pedazos de 4096 bytes, y llena el diccionario indicando
         /// que letras existen en el archivo y cuantas veces aparece cada una de ellas.
         /// </summary>
         /// <returns>
@@ -52,6 +59,7 @@ namespace LangDetector.Core
         public async Task Procesar()
         {
             int bytesLeidos = 0;
+            totalLetras = 0;
 
             // Se asume que todos los archivos tendrán encoding de UTF8
             // a menos que el sistema pueda detectarlo por el order de bytes.
@@ -61,32 +69,38 @@ namespace LangDetector.Core
                 var count = 0;
                 do
                 {
-                    // se lee un fragmento de 1024 bytes del archivo
+                    // se lee un fragmento de 4096 bytes del archivo
                     count = await reader.ReadAsync(buffer, 0, bufferSize);
 
 
-                    // Se analiza cada una de esas 1024 letras leídas
+                    // Se analiza cada una de esas 4096 letras leídas
                     // y si no se encuentran en el diccionario aún se
                     // agregan con valor de uno,
                     // pero si la letra ya existe en el diccionario,
                     // solo se incrementa en uno su valor.
                     for (int i = 0; i < count; i++)
                     {
-                        var letra = buffer[i];
+                        var caracter = buffer[i];
 
-                        if (!Considerar(letra))
+                        // Si el caracter no es considerado una letra, se ignora
+                        if (!char.IsLetter(caracter))
                         {
+                            // Nota importante, char.IsLetter considera letras en todos los idiomas,
+                            // por ejemplo si es una letra china, char.IsLetter retorna true, por lo
+                            // que esta función es importante para el objetivo del agente.
                             continue;
                         }
 
-                        if (letras.ContainsKey(letra))
+                        if (letras.ContainsKey(caracter))
                         {
-                            letras[letra]++;
+                            letras[caracter]++;
                         }
                         else
                         {
-                            letras.Add(letra, 1);
+                            letras.Add(caracter, 1);
                         }
+
+                        totalLetras++;
                     }
 
                     // se lleva la cuenta de la cantidad de bytes que se van leyendo hasta el momento.
@@ -95,14 +109,37 @@ namespace LangDetector.Core
                     // Se notifica el avance con la nueva cantidad de bytes para que la UI pueda
                     // conocer el avance y actualizar un progressbar o algo por el estilo.
                     NotificarAvance(bytesLeidos);
-                    System.Diagnostics.Trace.WriteLine(string.Format("Count {0}, {1} bytes", count, letras.Count));
 
-                } while (count == bufferSize);
-                
+                } while (count != 0);
+
+                NotificarAvance(pesoArchivo);
+
             }
         }
 
-        private void NotificarAvance(int bytes)
+        /// <summary>
+        /// Retorna las letras que se extrajeron el documento al procesarlo.
+        /// </summary>
+        /// <returns>Retorna un diccionario con la letra como indice y la cantidad de veces que aparece en el documento</returns>
+        public IDictionary<char, int> ObtenerLetras()
+        {
+            return letras;
+        }
+
+        /// <summary>
+        /// Obtiene el total de letras que posee el documento.
+        /// </summary>
+        /// <returns>Retorna la cantidad de letras que posee el documento en total.</returns>
+        public int ObtenerTotalLetras()
+        {
+            return totalLetras;
+        }
+
+        /// <summary>
+        /// Verifica si existen funciones suscritas al evento BytesLeidos y las invoca.
+        /// </summary>
+        /// <param name="bytes">Cantidad de bytes que se han leído del documento, esta cantidad puede compararse con el peso del archivo para saber el porcentaje de avance.</param>
+        private void NotificarAvance(long bytes)
         {
             if (BytesLeidos != null)
             {
@@ -110,53 +147,6 @@ namespace LangDetector.Core
                 BytesLeidos(this, args);
             }
         }
-
-        /// <summary>
-        /// Indica si la letra debe considerarse para evaluarse o si debe ignorarse,
-        /// por ejemplo, para letras a,b,c retornará true y para espacios en blanco, 
-        /// enter, etc. retornará false.
-        /// </summary>
-        /// <param name="letra">Letra que se evaluará</param>
-        /// <returns>Retorna true si se debe tomar en cuenta la letra, o false si se debe ignorar.</returns>
-        public static bool Considerar(int letra)
-        {
-            // Extremos de los símbolos
-            if (letra < 65 || letra > 165)
-            {
-                return false;
-            }
-
-            // Rangos de letras a considerar:
-
-            // Mayúsculas (26 posibilidades)
-            if (letra >= 65 && letra <= 90)
-            {
-                return true;
-            }
-
-            // Minusculas (26 posibilidades)
-            if (letra >= 97 && letra <= 122)
-            {
-                return true;
-            }
-
-            // Diacríticos (letras tildadas, con dieresis, etc.)
-            // (27 posibilidades)
-            if (letra >= 128 && letra <= 154)
-            {
-                return true;
-            }
-
-            // Diacríticos 2 (letras tildadas incluyendo la enye)
-            // (6 posibilidades)
-            if (letra >= 160 && letra <= 165)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
         
     }
 }
