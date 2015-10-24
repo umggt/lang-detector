@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using LangDetector.Core;
+using System.Windows;
 
 namespace LangDetector
 {
@@ -7,5 +8,9 @@ namespace LangDetector
     /// </summary>
     public partial class App : Application
     {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            BaseDeDatos.CrearSiNoExiste();
+        }
     }
 }
