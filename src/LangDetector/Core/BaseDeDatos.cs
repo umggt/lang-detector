@@ -8,6 +8,8 @@ namespace LangDetector.Core
 {
     /// <summary>
     /// Clase en la que se agregan las funcionalidades para administrar la base de datos.
+    /// Funcionalidades como la creación inicial de la base de datos, y métodos para
+    /// establecer la conexión.
     /// </summary>
     class BaseDeDatos
     {
