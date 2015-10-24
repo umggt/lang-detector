@@ -24,7 +24,7 @@ namespace LangDetector.Core
             }
         }
 
-        public static async Task Insertar(Letra letra)
+        public static async Task Insertar(IEnumerable<Letra> letra)
         {
             const string insert = @"INSERT INTO DOCUMENTOS_LETRAS (DOCUMENTO_ID, LETRA_ID, CANTIDAD, PORCENTAJE) VALUES (@documentoId, @id, @cantidad, @porcentaje)";
             using (var conexion = await BaseDeDatos.AbrirConexionAsync())

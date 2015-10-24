@@ -81,12 +81,9 @@ namespace LangDetector
                 var documento = new Documento { Letras = totalLetras };
                 documento.Id = await Repositorio.Insertar(documento);
 
-                // Se inserta el registro de las letras del documento en la base de datos.
+                // Se insertan las letras del documento en la base de datos.
                 var letrasColeccion = letras.Select(x => new Letra(documento, x));
-                foreach (var letra in letrasColeccion)
-                {
-                    await Repositorio.Insertar(letra);
-                }
+                await Repositorio.Insertar(letrasColeccion);
             }
         }
 
