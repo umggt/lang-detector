@@ -1,11 +1,10 @@
 ﻿using LangDetector.Core;
-using Microsoft.Win32;
-using System;
-using System.IO;
-using System.Windows;
 using LangDetector.Core.Events;
+using Microsoft.Win32;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Windows;
 
 namespace LangDetector
 {
