@@ -1,10 +1,13 @@
 ﻿using LangDetector.Core;
 using LangDetector.Core.Events;
+using LangDetector.Core.Modelos;
 using Microsoft.Win32;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Linq;
+using System.Transactions;
 
 namespace LangDetector
 {
@@ -71,7 +74,20 @@ namespace LangDetector
 
             // Se muestra el resultado como un texto
             MostrarResultado(letras, totalLetras);
-            
+
+            if (totalLetras > 0)
+            {
+                // Se inserta el documento en la base de datos.
+                var documento = new Documento { Letras = totalLetras };
+                documento.Id = await Repositorio.Insertar(documento);
+
+                // Se inserta el registro de las letras del documento en la base de datos.
+                var letrasColeccion = letras.Select(x => new Letra(documento, x));
+                foreach (var letra in letrasColeccion)
+                {
+                    await Repositorio.Insertar(letra);
+                }
+            }
         }
 
         private void CuandoSeLeanBytes(object sender, BytesLeidosEventArgs e)

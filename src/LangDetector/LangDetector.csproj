@@ -47,6 +47,7 @@
       <HintPath>..\packages\System.Data.SQLite.Core.1.0.98.1\lib\net46\System.Data.SQLite.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -74,8 +75,11 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core\Events\BytesLeidosEventArgs.cs" />
+    <Compile Include="Core\Modelos\Documento.cs" />
+    <Compile Include="Core\Modelos\Letra.cs" />
     <Compile Include="Core\Parser.cs" />
     <Compile Include="Core\BaseDeDatos.cs" />
+    <Compile Include="Core\Repositorio.cs" />
     <Compile Include="Tools\Resources.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
