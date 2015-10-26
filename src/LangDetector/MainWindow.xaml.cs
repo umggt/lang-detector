@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows;
 using System.Linq;
 using System.Transactions;
+using System;
 
 namespace LangDetector
 {
@@ -50,40 +51,31 @@ namespace LangDetector
             ProgressBar.Value = 0;
 
             var ruta = RutaArchivoTextBox.Text;
-            IDictionary<char, int> letras;
-            int totalLetras;
 
-            // Se parsea el documento para obtener las letras
-            using (var fileReader = File.OpenRead(ruta))
+            var agente = new Agente(ruta);
+            agente.SolicitarIdioma += SolicitarIdioma;
+
+            try
             {
-                var parser = new Parser(fileReader);
-
-                // se suscribe al evento BytesLeidos del parser
-                // para que ejecute la función CuandoSeLeanBytes.
-                parser.BytesLeidos += CuandoSeLeanBytes;
-
-                // Se ejecuta la función procesar y se espera a que termine.
-                await parser.Procesar();
-
-                // Se elimina la suscripción del evento BytesLeidos.
-                parser.BytesLeidos -= CuandoSeLeanBytes;
-
-                letras = parser.ObtenerLetras();
-                totalLetras = parser.ObtenerTotalLetras();
+                await agente.IdentificarIdioma();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error al identificar el idioma", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            // Se muestra el resultado como un texto
-            MostrarResultado(letras, totalLetras);
+            agente.SolicitarIdioma -= SolicitarIdioma;
+        }
 
-            if (totalLetras > 0)
+        private void SolicitarIdioma(object sender, SinIdiomasEventArgs e)
+        {
+            var ventana = new SolicitarIdiomaWindow();
+            ventana.EstablecerMensaje(e.Mensaje);
+            var result = ventana.ShowDialog();
+
+            if (result == true)
             {
-                // Se inserta el documento en la base de datos.
-                var documento = new Documento { Letras = totalLetras };
-                documento.Id = await Repositorio.Insertar(documento);
-
-                // Se insertan las letras del documento en la base de datos.
-                var letrasColeccion = letras.Select(x => new Letra(documento, x));
-                await Repositorio.Insertar(letrasColeccion);
+                e.NombreIdioma = ventana.ObtenerNombreIdioma();
             }
         }
 

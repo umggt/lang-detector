@@ -1,5 +1,6 @@
 ﻿using LangDetector.Tools;
 using System.Data;
+using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
@@ -34,13 +35,18 @@ namespace LangDetector.Core
             }
         }
 
+        private static DbConnection CrearConexion()
+        {
+            return new SQLiteConnection(connectionString);
+        }
+
         /// <summary>
         /// Método que abre una conexión hacia la base de datos.
         /// </summary>
         /// <returns>Retorna el objeto de conexión que se puede usar para ejecutar consultas hacia la base de datos.</returns>
         public static IDbConnection AbrirConexion()
         {
-            var conexion = new SQLiteConnection(connectionString);
+            var conexion = CrearConexion();
             conexion.Open();
             return conexion;
         }
@@ -51,7 +57,7 @@ namespace LangDetector.Core
         /// <returns>Retorna el objeto de conexión que se puede usar para ejecutar consultas hacia la base de datos.</returns>
         public static async Task<IDbConnection> AbrirConexionAsync()
         {
-            var conexion = new SQLiteConnection(connectionString);
+            var conexion = CrearConexion();
             await conexion.OpenAsync();
             return conexion;
         }

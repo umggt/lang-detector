@@ -1,7 +1,10 @@
 ﻿using LangDetector.Core.Events;
+using LangDetector.Core.Modelos;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,22 +15,15 @@ namespace LangDetector.Core
     /// extraer las letras que este contenga y la cantidad de veces que cada
     /// letra aparece en el documento.
     /// </summary>
-    public class Parser
+    class Parser
     {
         // Cantidad de bytes que se leeran a la vez cuando se analiza un archivo.
         // Asi si el archivo es muy grande no se carga todo a memoria, sino que
         // solo se carga en pedazos de 4096 bytes.
         private const int bufferSize = 4096;
 
-        // Diccionario que contendrá el ascii de cada letra que tiene el archivo
-        // y la cantidad de veces que esta aparece en el mismo.
-        private readonly IDictionary<char, int> letras;
-
-        // Cantidad de letras que posee el documento.
-        private int totalLetras;
-
         // Stream que permite acceder al archivo para leerlo.
-        private readonly Stream archivo;
+        private readonly string rutaArchivo;
 
         // Tamaño del archvio en bytes.
         private readonly long pesoArchivo;
@@ -40,12 +36,28 @@ namespace LangDetector.Core
         /// <summary>
         /// Constructor de la clase parser.
         /// </summary>
-        /// <param name="archivo">Stream para acceder al archivo que se quiere evaluar.</param>
-        public Parser(Stream archivo)
+        /// <param name="rutaArchivo">Stream para acceder al archivo que se quiere evaluar.</param>
+        public Parser(string rutaArchivo)
         {
-            this.archivo = archivo;
-            pesoArchivo = archivo.Length;
-            letras = new Dictionary<char, int>();
+            this.rutaArchivo = rutaArchivo;
+            pesoArchivo = ObtenerPesoArchivo();
+        }
+
+        private int ObtenerPesoArchivo()
+        {
+            int total = 0;
+            using (var reader = new StreamReader(rutaArchivo, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: bufferSize))
+            {
+                var buffer = new char[bufferSize];
+                var count = 0;
+
+                do
+                {
+                    count = reader.Read(buffer, 0, bufferSize);
+                    total += count;
+                } while (count != 0);
+            }
+            return total;
         }
 
         /// <summary>
@@ -56,17 +68,28 @@ namespace LangDetector.Core
         /// Retorna una tarea ya que es un proceso que puede ejecutarse en otro 
         /// hilo para no bloquear la UI.
         /// </returns>
-        public async Task Procesar()
+        public async Task<DocumentoProcesado> Procesar()
         {
+            var palabras = new SortedDictionary<string, int>();
+            var letras = new SortedDictionary<char, int>();
+            var signos = new SortedDictionary<char, int>();
+            var simbolos = new SortedDictionary<char, int>();
+
+            int palabrasCantidad = 0;
+            int letrasCantidad = 0;
+            int signosCantidad = 0;
+            int simbolosCantidad = 0;
+
             int bytesLeidos = 0;
-            totalLetras = 0;
 
             // Se asume que todos los archivos tendrán encoding de UTF8
             // a menos que el sistema pueda detectarlo por el order de bytes.
-            using (var reader = new StreamReader(archivo, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: bufferSize))
+            using (var reader = new StreamReader(rutaArchivo, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: bufferSize))
             {
+                var letrasPalabra = new List<char>();
                 var buffer = new char[bufferSize];
                 var count = 0;
+
                 do
                 {
                     // se lee un fragmento de 4096 bytes del archivo
@@ -82,25 +105,71 @@ namespace LangDetector.Core
                     {
                         var caracter = buffer[i];
 
-                        // Si el caracter no es considerado una letra, se ignora
-                        if (!char.IsLetter(caracter))
+                        if (char.IsLetter(caracter))
                         {
-                            // Nota importante, char.IsLetter considera letras en todos los idiomas,
-                            // por ejemplo si es una letra china, char.IsLetter retorna true, por lo
-                            // que esta función es importante para el objetivo del agente.
-                            continue;
+                            letrasCantidad++;
+
+                            letrasPalabra.Add(caracter);
+
+                            if (letras.ContainsKey(caracter))
+                            {
+                                letras[caracter]++;
+                            }
+                            else
+                            {
+                                letras.Add(caracter, 1);
+                            }
+                        }
+                        else if (letrasPalabra.Count > 0)
+                        {
+                            if (letrasPalabra.Count > 2)
+                            {
+                                palabrasCantidad++;
+
+                                var palabra = new string(letrasPalabra.ToArray()).ToLowerInvariant();
+
+                                if (palabras.ContainsKey(palabra))
+                                {
+                                    palabras[palabra]++;
+                                }
+                                else
+                                {
+                                    palabras.Add(palabra, 1);
+                                }
+                            }
+
+                            letrasPalabra.Clear();
+
                         }
 
-                        if (letras.ContainsKey(caracter))
+                        if (char.IsPunctuation(caracter))
                         {
-                            letras[caracter]++;
-                        }
-                        else
-                        {
-                            letras.Add(caracter, 1);
+                            signosCantidad++;
+
+                            if (signos.ContainsKey(caracter))
+                            {
+                                signos[caracter]++;
+                            }
+                            else
+                            {
+                                signos.Add(caracter, 1);
+                            }
                         }
 
-                        totalLetras++;
+                        if (char.IsSymbol(caracter))
+                        {
+
+                            simbolosCantidad++;
+
+                            if (simbolos.ContainsKey(caracter))
+                            {
+                                simbolos[caracter]++;
+                            }
+                            else
+                            {
+                                simbolos.Add(caracter, 1);
+                            }
+                        }
                     }
 
                     // se lleva la cuenta de la cantidad de bytes que se van leyendo hasta el momento.
@@ -113,26 +182,19 @@ namespace LangDetector.Core
                 } while (count != 0);
 
                 NotificarAvance(pesoArchivo);
-
             }
-        }
 
-        /// <summary>
-        /// Retorna las letras que se extrajeron el documento al procesarlo.
-        /// </summary>
-        /// <returns>Retorna un diccionario con la letra como indice y la cantidad de veces que aparece en el documento</returns>
-        public IDictionary<char, int> ObtenerLetras()
-        {
-            return letras;
-        }
-
-        /// <summary>
-        /// Obtiene el total de letras que posee el documento.
-        /// </summary>
-        /// <returns>Retorna la cantidad de letras que posee el documento en total.</returns>
-        public int ObtenerTotalLetras()
-        {
-            return totalLetras;
+            return new DocumentoProcesado
+            {
+                Letras = letras,
+                Palabras = palabras,
+                Signos = signos,
+                Simbolos = simbolos,
+                LetrasCantidad = letrasCantidad,
+                PalabrasCantidad = palabrasCantidad,
+                SignosCantidad = signosCantidad,
+                SimbolosCantidad = simbolosCantidad
+            };
         }
 
         /// <summary>
