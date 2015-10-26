@@ -1,10 +1,8 @@
-﻿using LangDetector.Core.Modelos;
-using System;
+﻿using Dapper;
+using LangDetector.Core.Modelos;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Dapper;
 
 namespace LangDetector.Core
 {

@@ -1,14 +1,14 @@
-﻿using System;
+﻿using LangDetector.Core.Events;
+using LangDetector.Core.Modelos;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using LangDetector.Core.Events;
-using LangDetector.Core.Modelos;
 using System.Transactions;
-using System.Security.Cryptography;
-using System.Diagnostics;
 
 namespace LangDetector.Core
 {
