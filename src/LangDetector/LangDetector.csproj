@@ -75,6 +75,8 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core\Agente.cs" />
+    <Compile Include="Core\Events\AvanceGlobalEventArgs.cs" />
+    <Compile Include="Core\Events\AvanceEventArgs.cs" />
     <Compile Include="Core\Events\BytesLeidosEventArgs.cs" />
     <Compile Include="Core\Events\SinIdiomasEventArgs.cs" />
     <Compile Include="Core\Modelos\Documento.cs" />

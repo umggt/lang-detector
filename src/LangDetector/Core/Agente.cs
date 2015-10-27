@@ -12,11 +12,15 @@ using System.Transactions;
 
 namespace LangDetector.Core
 {
-    class Agente
+    class Agente : IDisposable
     {
+        private const double totalPasos = 6;
         private readonly string archivo;
+        private readonly Repositorio repositorio;
 
         public event EventHandler<SinIdiomasEventArgs> SolicitarIdioma;
+        public event EventHandler<AvanceEventArgs> AvanceGlobal;
+        public event EventHandler<AvanceEventArgs> AvanceParcial;
 
         public Agente(string archivo)
         {
@@ -26,6 +30,7 @@ namespace LangDetector.Core
             }
 
             this.archivo = archivo;
+            repositorio = new Repositorio();
         }
 
         public async Task<Documento> IdentificarIdioma()
@@ -38,7 +43,7 @@ namespace LangDetector.Core
                 throw new InvalidOperationException("El documento está vacío o contiene signos que el agente no puede procesar.");
             }
 
-            var cantidadDeIdiomasQueConozco = await Repositorio.ContarIdiomasConocidos();
+            var cantidadDeIdiomasQueConozco = await repositorio.ContarIdiomasConocidos();
 
             if (cantidadDeIdiomasQueConozco == 0)
             {
@@ -60,7 +65,7 @@ namespace LangDetector.Core
                 await Recordar(documento, idioma, cienPorcientoSeguro: true);
 
             }
-            else
+            else if (documento.IdiomaId == null)
             {
                 // TODO: Analizar
             }
@@ -71,30 +76,29 @@ namespace LangDetector.Core
 
         private async Task Recordar(Idioma idioma)
         {
-            idioma.Id = await Repositorio.Insertar(idioma);
+            idioma.Id = await repositorio.Insertar(idioma);
         }
 
         private async Task Recordar(Documento documento, Idioma idioma, bool cienPorcientoSeguro = false)
         {
-            using (var transaccion = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-            {
-                await Repositorio.CopiarLetrasNuevas(documento, idioma);
-                await Repositorio.ActualizarLetrasExistentes(documento, idioma);
-                await Repositorio.ActualizarTotales(idioma);
-                await Repositorio.ActualizarPorcentajeEnLetras(idioma);
-                await Repositorio.ActualizarPorcentajeEnPalabras(idioma);
-                await Repositorio.Asociar(documento, idioma);
-                
-                if (cienPorcientoSeguro)
-                {
-                    documento.Confianza = 100;
-                    await Repositorio.Actualizar(documento);
-                    await Repositorio.EliminarLetras(documento);
-                }
+            await repositorio.CopiarLetrasNuevas(documento, idioma);
+            await repositorio.CopiarPalabrasNuevas(documento, idioma);
+            await repositorio.ActualizarLetrasExistentes(documento, idioma);
+            await repositorio.ActualizarPalabrasExistentes(documento, idioma);
+            await repositorio.ActualizarTotales(idioma);
+            await repositorio.ActualizarPorcentajeEnLetras(idioma);
+            await repositorio.ActualizarPorcentajeEnPalabras(idioma);
 
-                transaccion.Complete();
+            if (cienPorcientoSeguro)
+            {
+                documento.Confianza = 100;
+                await repositorio.EliminarLetras(documento);
             }
-            
+
+            documento.IdiomaId = idioma.Id;
+
+            await repositorio.Actualizar(documento);
+
         }
 
         private async Task<Documento> ParsearDocumento()
@@ -107,25 +111,79 @@ namespace LangDetector.Core
             var documentoProcesado = await parser.Procesar();
             parser.BytesLeidos -= CuandoElParserProceseBytes;
 
+            NotificarAvanceGlobal(1);
             cronometro.Stop();
 
             Debug.WriteLine("Documento procesado en {0} milisegundos", cronometro.ElapsedMilliseconds);
 
             cronometro.Start();
 
-            var documento = new Documento
+            var hash = CancularHash(documentoProcesado.Palabras);
+            var palabrasDistintas = documentoProcesado.Palabras.Count;
+            var documento = await repositorio.ObtenerDocumento(hash, palabrasDistintas);
+
+            NotificarAvanceGlobal(2);
+
+            if (documento == null)
             {
-                Letras = documentoProcesado.LetrasCantidad,
-                Palabras = documentoProcesado.PalabrasCantidad,
-                Signos = documentoProcesado.SignosCantidad,
-                Simbolos = documentoProcesado.SimbolosCantidad,
-                Hash = CancularHash(documentoProcesado.Palabras)
-            };
-            documento.Id = await Repositorio.Insertar(documento);
-            await Repositorio.Insertar(documentoProcesado.Letras.Select(valor => new DocumentoLetra(valor, documento)));
-            await Repositorio.Insertar(documentoProcesado.Signos.Select(valor => new DocumentoSigno(valor, documento)));
-            await Repositorio.Insertar(documentoProcesado.Simbolos.Select(valor => new DocumentoSimbolo(valor, documento)));
-            await Repositorio.Insertar(documentoProcesado.Palabras.Select(valor => new DocumentoPalabra(valor, documento)));
+                documento = new Documento
+                {
+                    Letras = documentoProcesado.LetrasCantidad,
+                    LetrasDistintas = documentoProcesado.Letras.Count,
+                    Palabras = documentoProcesado.PalabrasCantidad,
+                    PalabrasDistintas = documentoProcesado.Palabras.Count,
+                    Signos = documentoProcesado.SignosCantidad,
+                    SignosDistintos = documentoProcesado.Signos.Count,
+                    Simbolos = documentoProcesado.SimbolosCantidad,
+                    SimbolosDistintos = documentoProcesado.Simbolos.Count,
+                    Hash = hash
+                };
+
+                documento.Id = await repositorio.Insertar(documento);
+
+                int x = 0;
+
+                foreach (var letra in documentoProcesado.Letras)
+                {
+                    await repositorio.Insertar(new DocumentoLetra(letra, documento));
+                    x++;
+                    NotificarAvanceParcial(x, documento.LetrasDistintas);
+                }
+
+                NotificarAvanceGlobal(3);
+                x = 0;
+
+                foreach (var signo in documentoProcesado.Signos)
+                {
+                    await repositorio.Insertar(new DocumentoSigno(signo, documento));
+                    x++;
+                    NotificarAvanceParcial(x, documento.SignosDistintos);
+                }
+
+                NotificarAvanceGlobal(4);
+                x = 0;
+
+                foreach (var simbolo in documentoProcesado.Simbolos)
+                {
+                    await repositorio.Insertar(new DocumentoSimbolo(simbolo, documento));
+                    x++;
+                    NotificarAvanceParcial(x, documento.SimbolosDistintos);
+                }
+
+                NotificarAvanceGlobal(5);
+                x = 0;
+
+                foreach (var palabra in documentoProcesado.Palabras)
+                {
+                    await repositorio.Insertar(new DocumentoPalabra(palabra, documento));
+                    x++;
+                    NotificarAvanceParcial(x, documento.PalabrasDistintas);
+                }
+
+            }
+
+            NotificarAvanceGlobal(6);
+
 
             cronometro.Stop();
 
@@ -155,7 +213,28 @@ namespace LangDetector.Core
 
         private void CuandoElParserProceseBytes(object sender, BytesLeidosEventArgs e)
         {
-            
+            NotificarAvanceParcial(e.BytesLeidos, e.BytesTotales);
+        }
+
+        private void NotificarAvanceParcial(double valor, double total)
+        {
+            if (AvanceParcial != null)
+            {
+                AvanceParcial(this, new AvanceEventArgs { Porcentaje = (valor / total * 100) });
+            }
+        }
+
+        private void NotificarAvanceGlobal(double paso)
+        {
+            if (AvanceGlobal != null)
+            {
+                AvanceGlobal(this, new AvanceEventArgs { Porcentaje = (paso / totalPasos * 100) });
+            }
+        }
+
+        public void Dispose()
+        {
+            repositorio.Dispose();
         }
     }
 }

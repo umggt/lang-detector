@@ -27,5 +27,9 @@
         public int Signos { get; set; }
         public int Simbolos { get; set; }
         public long? Confianza { get; set; }
+        public int LetrasDistintas { get; set; }
+        public int PalabrasDistintas { get; set; }
+        public int SignosDistintos { get; set; }
+        public int SimbolosDistintos { get; set; }
     }
 }

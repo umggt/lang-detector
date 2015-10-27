@@ -49,24 +49,42 @@ namespace LangDetector
 
             var ruta = RutaArchivoTextBox.Text;
 
-            var agente = new Agente(ruta);
-            agente.SolicitarIdioma += SolicitarIdioma;
-
-            try
+            using (var agente = new Agente(ruta))
             {
-                await agente.IdentificarIdioma();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error al identificar el idioma", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+                agente.SolicitarIdioma += SolicitarIdioma;
+                agente.AvanceParcial += AvanceParcial;
+                agente.AvanceGlobal += AvanceGlobal;
 
-            agente.SolicitarIdioma -= SolicitarIdioma;
+                try
+                {
+                    await agente.IdentificarIdioma();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Error al identificar el idioma", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                agente.SolicitarIdioma -= SolicitarIdioma;
+                agente.AvanceParcial -= AvanceParcial;
+                agente.AvanceGlobal -= AvanceGlobal;
+            }
+        }
+
+        private void AvanceGlobal(object sender, AvanceEventArgs e)
+        {
+            ProgressBar.Value = e.Porcentaje;
+        }
+
+        private void AvanceParcial(object sender, AvanceEventArgs e)
+        {
+            ProgressBar2.Value = e.Porcentaje;
         }
 
         private void SolicitarIdioma(object sender, SinIdiomasEventArgs e)
         {
             var ventana = new SolicitarIdiomaWindow();
+            ventana.Height = 220;
+
             ventana.EstablecerMensaje(e.Mensaje);
             var result = ventana.ShowDialog();
 
@@ -75,32 +93,6 @@ namespace LangDetector
                 e.NombreIdioma = ventana.ObtenerNombreIdioma();
             }
         }
-
-        private void CuandoSeLeanBytes(object sender, BytesLeidosEventArgs e)
-        {
-            var porcentajeDeAvance = ((double)e.BytesLeidos / e.BytesTotales) * 100;
-            ProgressBar.Value = porcentajeDeAvance;
-        }
-
-        private void MostrarResultado(IDictionary<char, int> letras, int totalLetras)
-        {
-            var sb = new StringBuilder();
-
-            sb.AppendLine("Codigo Letra Cantidad Porcentaje");
-            sb.AppendLine("------ ----- -------- ----------");
-
-            foreach (var valor in letras)
-            {
-                var letra = valor.Key;
-                var codigo = (int)letra;
-                var cantidad = valor.Value;
-                var porcentaje = ((double)cantidad / totalLetras) * 100;
-
-                sb.AppendFormat("{0,6} {1,5} {2,8} {3,10}%", codigo, letra, cantidad, porcentaje.ToString("N2"));
-                sb.AppendLine();
-            }
-
-            ResultadoTextBox.Text = sb.ToString();
-        }
+        
     }
 }

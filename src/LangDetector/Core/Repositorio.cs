@@ -3,71 +3,90 @@ using LangDetector.Core.Modelos;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System;
+using System.Data;
 
 namespace LangDetector.Core
 {
-    class Repositorio
+    class Repositorio : IDisposable
     {
-        public static async Task<long> Insertar(Idioma documento)
+        private readonly IDbConnection conexion;
+
+        public Repositorio()
         {
-            const string insert = @"INSERT INTO IDIOMAS (NOMBRE, LETRAS, SIGNOS, SIMBOLOS, PALABRAS) VALUES (@nombre, @letras, @signos, @simbolos, @palabras)";
+            conexion = BaseDeDatos.AbrirConexion();
+        }
+
+        public async Task<long> Insertar(Idioma documento)
+        {
+            const string insert = @"INSERT INTO IDIOMAS (NOMBRE, LETRAS, SIGNOS, SIMBOLOS, PALABRAS, LETRAS_DISTINTAS, SIGNOS_DISTINTOS, SIMBOLOS_DISTINTOS, PALABRAS_DISTINTAS) VALUES (@nombre, @letras, @signos, @simbolos, @palabras, @letrasDistintas, @signosDistintos, @simbolosDistintos, @palabrasDistintas)";
             const string selectId = @"SELECT last_insert_rowid() FROM IDIOMAS";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(insert, documento);
 
-                var id = await conexion.QueryAsync<long>(selectId);
-                return id.FirstOrDefault();
-            }
+            await conexion.ExecuteAsync(insert, documento);
+
+            var id = await conexion.QueryAsync<long>(selectId);
+            return id.FirstOrDefault();
         }
 
-        public static async Task<long> Insertar(Documento documento)
+        public async Task<long> Insertar(Documento documento)
         {
-            const string insert = @"INSERT INTO DOCUMENTOS (HASH, LETRAS, SIGNOS, SIMBOLOS, PALABRAS) VALUES (@hash, @letras, @signos, @simbolos, @palabras)";
+            const string insert = @"
+            INSERT INTO DOCUMENTOS (
+                HASH, 
+                LETRAS,
+                LETRAS_DISTINTAS,
+                SIGNOS, 
+                SIGNOS_DISTINTOS,
+                SIMBOLOS, 
+                SIMBOLOS_DISTINTOS,
+                PALABRAS,
+                PALABRAS_DISTINTAS
+            ) 
+            VALUES (
+                @hash, 
+                @letras, 
+                @letrasDistintas,
+                @signos, 
+                @signosDistintos,
+                @simbolos,
+                @simbolosDistintos,
+                @palabras,
+                @palabrasDistintas
+            )";
+
             const string selectId = @"SELECT last_insert_rowid() FROM DOCUMENTOS";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(insert, documento);
 
-                var id = await conexion.QueryAsync<long>(selectId);
-                return id.FirstOrDefault();
-            }
+            await conexion.ExecuteAsync(insert, documento);
+
+            var id = await conexion.QueryAsync<long>(selectId);
+            return id.FirstOrDefault();
         }
 
-        public static async Task Insertar(IEnumerable<DocumentoLetra> letras)
+        public async Task Insertar(IEnumerable<DocumentoLetra> letras)
         {
             const string insert = @"INSERT INTO DOCUMENTOS_LETRAS (DOCUMENTO_ID, LETRA_ID, CANTIDAD, PORCENTAJE, TIPO) VALUES (@documentoId, @id, @cantidad, @porcentaje, @tipo)";
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(insert, letras);
-            }
+            await conexion.ExecuteAsync(insert, letras);
         }
 
-        public static async Task<long> ContarIdiomasConocidos()
+        public async Task Insertar(DocumentoLetra letra)
+        {
+            const string insert = @"INSERT INTO DOCUMENTOS_LETRAS (DOCUMENTO_ID, LETRA_ID, CANTIDAD, PORCENTAJE, TIPO) VALUES (@documentoId, @id, @cantidad, @porcentaje, @tipo)";
+
+            await conexion.ExecuteAsync(insert, letra);
+        }
+
+        public async Task<long> ContarIdiomasConocidos()
         {
             const string select = @"SELECT COUNT(*) FROM IDIOMAS WHERE LETRAS > 0 OR SIMBOLOS > 0 OR SIGNOS > 0";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                var cantidad = await conexion.QueryAsync<long>(select);
-                return cantidad.FirstOrDefault();
-            }
+
+            var cantidad = await conexion.QueryAsync<long>(select);
+            return cantidad.FirstOrDefault();
         }
 
-        internal static async Task<Idioma> ObtenerPrimerIdioma()
-        {
-            const string select = "SELECT IDIOMA_ID, NOMBRE, LETRAS, SIGNOS, SIMBOLOS, PALABRAS FROM IDIOMAS";
-
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                var result = await conexion.QueryAsync<Idioma>(select);
-                return result.FirstOrDefault();
-            }
-        }
-
-        public static async Task CopiarLetrasNuevas(Documento documento, Idioma idioma)
+        public async Task CopiarLetrasNuevas(Documento documento, Idioma idioma)
         {
             const string insertSelect = @"
             INSERT INTO IDIOMAS_LETRAS (IDIOMA_ID, LETRA_ID, CANTIDAD, PORCENTAJE, TIPO)
@@ -80,205 +99,160 @@ namespace LangDetector.Core
                 AND NOT LETRA_ID IN (SELECT LETRA_ID FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId)
             ";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
-            }
+
+            await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
         }
 
-        internal static async Task Asociar(Documento documento, Idioma idioma)
+        public async Task CopiarPalabrasNuevas(Documento documento, Idioma idioma)
         {
-            documento.IdiomaId = idioma.Id;
+            const string insertSelect = @"
+            INSERT INTO IDIOMAS_PALABRAS (IDIOMA_ID, PALABRA, CANTIDAD, PORCENTAJE)
+            SELECT 
+                @idiomaId IDIOMA_ID, PALABRA, CANTIDAD, PORCENTAJE
+            FROM 
+                DOCUMENTOS_PALABRAS
+            WHERE 
+                DOCUMENTO_ID = @documentoId
+                AND NOT PALABRA IN (SELECT PALABRA FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId)
+            ";
 
-            const string update = @"UPDATE DOCUMENTOS SET IDIOMA_ID = @idiomaId, CONFIANZA = @confianza WHERE DOCUMENTO_ID = @id";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, documento);
-            }
-
+            await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
         }
 
-        internal static async Task Actualizar(DocumentoLetra letra)
+        internal async Task<Documento> ObtenerDocumento(string hash, int palabrasDistintas)
         {
-            const string update = "UPDATE DOCUMENTOS_LETRAS SET CANTIDAD = @cantidad, PORCENTAJE = @porcentaje WHERE DOCUMENTO_ID = @documentoId AND LETRA_ID = @id";
+            const string select = @"
+            SELECT 
+                ID, 
+                HASH, 
+                LETRAS,
+                LETRAS_DISTINTAS LetrasDistintas,
+                SIGNOS, 
+                SIGNOS_DISTINTOS SignosDistintos,
+                SIMBOLOS, 
+                SIMBOLOS_DISTINTOS SimbolosDistintos,
+                PALABRAS, 
+                PALABRAS_DISTINTAS PalabrasDistintas,
+                IDIOMA_ID IdiomaId, 
+                CONFIANZA 
+            FROM 
+                DOCUMENTOS 
+            WHERE 
+                HASH = @hash 
+                AND PALABRAS_DISTINTAS = @palabrasDistintas";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, letra);
-            }
+            var result = await conexion.QueryAsync<Documento>(select, new { hash, palabrasDistintas });
+            return result.FirstOrDefault();
         }
 
-        internal static async Task<DocumentoPalabra> ObtenerPalabra(string palabra, Documento documento)
-        {
-            const string select = "SELECT PALABRA, DOCUMENTO_ID DocumentoId, CANTIDAD, PORCENTAJE FROM DOCUMENTOS_PALABRAS WHERE DOCUMENTO_ID = @documentoId AND PALABRA = @palabra";
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                var result = await conexion.QueryAsync<DocumentoPalabra>(select, new { palabra, documentoId = documento.Id });
-                return result.FirstOrDefault();
-            }
-        }
-
-        internal async static Task<DocumentoLetra> ObtenerLetra(char letraId, Documento documento)
-        {
-            const string select = "SELECT LETRA_ID Id, DOCUMENTO_ID DocumentoId, CANTIDAD, PORCENTAJE, TIPO FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId AND LETRA_ID = @letraId";
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                var result = await conexion.QueryAsync<DocumentoLetra>(select, new { letraId = (int)letraId, documentoId = documento.Id });
-                return result.FirstOrDefault();
-            }
-        }
-
-        internal static async Task Actualizar(DocumentoPalabra palabra)
-        {
-            const string update = "UPDATE DOCUMENTOS_PALABRAS SET CANTIDAD = @Cantidad, PORCENTAJE = @Porcentaje WHERE DOCUMENTO_ID = @DocumentoId AND PALABRA = @Palabra";
-
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                var result = await conexion.ExecuteAsync(update, new { palabra.Cantidad, palabra.Porcentaje, palabra.DocumentoId, Palabra = new DbString { Value = palabra.Palabra, IsAnsi = true } });
-                System.Diagnostics.Debug.WriteLine("Update " + result.ToString());
-            }
-        }
-
-        internal static async Task ActualizarPorcentajeEnLetras(Idioma idioma)
+        internal async Task ActualizarPorcentajeEnLetras(Idioma idioma)
         {
             const string update = @"
             UPDATE IDIOMAS_LETRAS 
-                SET PORCENTAJE = CANTIDAD / 
-                    CASE TIPO 
-                    WHEN 1
-                        CASE IDIOMAS.LETRAS WHEN 0 THEN 0 ELSE CANTIDAD / IDIOMAS.LETRAS END
-                    WHEN 2
-                        CASE IDIOMAS.SIGNOS WHEN 0 THEN 0 ELSE CANTIDAD / IDIOMAS.SIGNOS END
-                    WHEN 3
-                        CASE IDIOMAS.SIMBOLOS WHEN 0 THEN 0 ELSE CANTIDAD / IDIOMAS.SIMBOLOS END
-                    END
-            FROM 
-                IDIOMAS 
+                SET PORCENTAJE = CAST(CANTIDAD AS REAL) / CAST((SELECT SUM(CASE IDIOMAS_LETRAS.TIPO WHEN 1 THEN LETRAS WHEN 2 THEN SIGNOS ELSE SIMBOLOS END) FROM IDIOMAS WHERE IDIOMAS.ID = IDIOMAS_LETRAS.IDIOMA_ID) AS REAL) * 100
             WHERE 
                 IDIOMA_ID = @idiomaId";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
-            }
+            await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
         }
 
-        internal static async Task ActualizarPorcentajeEnPalabras(Idioma idioma)
+        internal async Task ActualizarPorcentajeEnPalabras(Idioma idioma)
         {
             const string update = @"
             UPDATE IDIOMAS_PALABRAS
-                SET PORCENTAJE = CASE IDIOMAS.PALABRAS WHEN 0 THEN 0 ELSE CANDIDAD / IDIOMAS.PALABRAS END
-            FROM 
-                IDIOMAS 
+                SET PORCENTAJE = CAST(CANTIDAD AS REAL) / CAST((SELECT SUM(PALABRAS) FROM IDIOMAS WHERE IDIOMAS.ID = IDIOMAS_PALABRAS.IDIOMA_ID) AS REAL) * 100
             WHERE 
                 IDIOMA_ID = @idiomaId";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
-            }
+
+            await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
         }
 
 
-        internal static async Task Actualizar(Documento documento)
+        internal async Task Actualizar(Documento documento)
         {
-            const string update = "UPDATE DOCUMENTOS SET LETRAS = @letras, PALABRAS = @palabras, SIGNOS = @signos, SIMBOLOS = @simbolos, HASH = @hash WHERE DOCUMENTO_ID = @id";
+            const string update = "UPDATE DOCUMENTOS SET LETRAS = @letras, PALABRAS = @palabras, SIGNOS = @signos, SIMBOLOS = @simbolos, HASH = @hash, IDIOMA_ID = @idiomaId, CONFIANZA = @confianza WHERE ID = @id";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, documento);
-            }
+
+            await conexion.ExecuteAsync(update, documento);
         }
 
-        internal static async Task ActualizarPorcentajeEnPalabras(Documento documento)
-        {
-            const string update = @"
-            UPDATE DOCUMENTOS_PALABRAS
-                SET PORCENTAJE = CANTIDAD / @palabras
-            WHERE 
-                DOCUMENTO_ID = @id";
-
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, documento);
-            }
-        }
-
-        internal static async Task ActualizarPorcentajeEnLetras(Documento documento)
-        {
-            const string update = @"
-            UPDATE DOCUMENTOS_LETRAS 
-                SET PORCENTAJE = 
-                    CASE TIPO 
-                    WHEN 1 THEN
-                        CASE @letras WHEN 0 THEN 0 ELSE CANTIDAD / @letras END
-                    WHEN 2 THEN
-                        CASE @signos WHEN 0 THEN 0 ELSE CANTIDAD / @signos END
-                    ELSE
-                        CASE @simbolos WHEN 0 THEN 0 ELSE CANTIDAD / @simbolos END
-                    END
-            WHERE 
-                DOCUMENTO_ID = @id";
-
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, documento);
-            }
-        }
-
-        internal static async Task Insertar(IEnumerable<DocumentoPalabra> palabras)
+        internal async Task Insertar(IEnumerable<DocumentoPalabra> palabras)
         {
             const string update = "INSERT INTO DOCUMENTOS_PALABRAS (PALABRA, DOCUMENTO_ID, CANTIDAD, PORCENTAJE) VALUES (@palabra, @documentoId, @cantidad, @porcentaje)";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, palabras);
-            }
+
+            await conexion.ExecuteAsync(update, palabras);
         }
 
-        internal static async Task ActualizarTotales(Idioma idioma)
+        internal async Task Insertar(DocumentoPalabra palabra)
+        {
+            const string update = "INSERT INTO DOCUMENTOS_PALABRAS (PALABRA, DOCUMENTO_ID, CANTIDAD, PORCENTAJE) VALUES (@palabra, @documentoId, @cantidad, @porcentaje)";
+
+
+            await conexion.ExecuteAsync(update, palabra);
+        }
+
+        internal async Task ActualizarTotales(Idioma idioma)
         {
             const string update = @"
             UPDATE IDIOMAS SET 
                 LETRAS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1),
+                LETRAS_DISTINTAS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1),
                 SIGNOS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2),
+                SIGNOS_DISTINTOS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2),
                 SIMBOLOS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3),
-                PALABRAS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId)";
+                SIMBOLOS_DISTINTOS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3),
+                PALABRAS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId),
+                PALABRAS_DISTINTAS = (SELECT COUNT(*) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId)";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
-            }
+
+            await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
         }
-        
-        internal async static Task ActualizarLetrasExistentes(Documento documento, Idioma idioma)
+
+        internal async Task ActualizarLetrasExistentes(Documento documento, Idioma idioma)
         {
             const string insertSelect = @"
-            UPDATE IDIOMAS_LETRAS IL
-                SET IL.CANTIDAD = IL.CANTIDAD + DL.CANTIDAD
-            FROM
-                DOCUMENTOS_LETRAS DL
+            UPDATE IDIOMAS_LETRAS
+                SET CANTIDAD = CANTIDAD + (SELECT SUM(CANTIDAD) FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId AND DOCUMENTOS_LETRAS.LETRA_ID = IDIOMAS_LETRAS.LETRA_ID)
             WHERE 
-                IL.LETRA_ID = DL.LETRA_ID
-                AND IL.IDIOMA_ID = @idiomaId
-                AND DL.DOCUMENTO_ID = @documentoId
+                IDIOMAS_LETRAS.IDIOMA_ID = @idiomaId
+                AND LETRA_ID IN (SELECT LETRA_ID FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId)
             ";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
-            }
+            await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
         }
 
-        public static async Task EliminarLetras(Documento documento)
+        internal async Task ActualizarPalabrasExistentes(Documento documento, Idioma idioma)
         {
-            const string delete = @"DELETE DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId";
+            const string insertSelect = @"
+            UPDATE IDIOMAS_PALABRAS
+                SET CANTIDAD = CANTIDAD + (
+                    SELECT 
+                        SUM(CANTIDAD) 
+                    FROM 
+                        DOCUMENTOS_PALABRAS 
+                    WHERE 
+                        DOCUMENTOS_PALABRAS.PALABRA = IDIOMAS_PALABRAS.PALABRA 
+                        AND DOCUMENTOS_PALABRAS.DOCUMENTO_ID = @documentoId)
+            WHERE 
+                IDIOMA_ID = @idiomaId
+            ";
 
-            using (var conexion = await BaseDeDatos.AbrirConexionAsync())
-            {
-                await conexion.ExecuteAsync(delete, new { documentoId = documento.Id });
-            }
+
+            await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
+        }
+
+        public async Task EliminarLetras(Documento documento)
+        {
+            const string delete = @"DELETE FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId";
+            await conexion.ExecuteAsync(delete, new { documentoId = documento.Id });
+        }
+
+        public void Dispose()
+        {
+            conexion.Dispose();
         }
     }
 }
