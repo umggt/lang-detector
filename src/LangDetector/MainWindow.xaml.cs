@@ -2,9 +2,8 @@
 using LangDetector.Core.Events;
 using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace LangDetector
@@ -57,7 +56,8 @@ namespace LangDetector
 
                 try
                 {
-                    await agente.IdentificarIdioma();
+                    var result = await await Task.Factory.StartNew(() => agente.IdentificarIdioma());
+                    
                 }
                 catch (Exception ex)
                 {
@@ -72,26 +72,33 @@ namespace LangDetector
 
         private void AvanceGlobal(object sender, AvanceEventArgs e)
         {
-            ProgressBar.Value = e.Porcentaje;
+            Dispatcher.Invoke(() => {
+                ProgressBar.Value = e.Porcentaje;
+            });
+            
         }
 
         private void AvanceParcial(object sender, AvanceEventArgs e)
         {
-            ProgressBar2.Value = e.Porcentaje;
+            Dispatcher.Invoke(() => {
+                ProgressBar2.Value = e.Porcentaje;
+            });
         }
 
         private void SolicitarIdioma(object sender, SinIdiomasEventArgs e)
         {
-            var ventana = new SolicitarIdiomaWindow();
-            ventana.Height = 220;
+            Dispatcher.Invoke(() => {
+                var ventana = new SolicitarIdiomaWindow();
+                ventana.Height = 220;
 
-            ventana.EstablecerMensaje(e.Mensaje);
-            var result = ventana.ShowDialog();
+                ventana.EstablecerMensaje(e.Mensaje);
+                var result = ventana.ShowDialog();
 
-            if (result == true)
-            {
-                e.NombreIdioma = ventana.ObtenerNombreIdioma();
-            }
+                if (result == true)
+                {
+                    e.NombreIdioma = ventana.ObtenerNombreIdioma();
+                }
+            });
         }
         
     }

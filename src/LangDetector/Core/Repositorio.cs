@@ -1,10 +1,10 @@
 ﻿using Dapper;
 using LangDetector.Core.Modelos;
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
-using System.Data;
 
 namespace LangDetector.Core
 {
@@ -118,6 +118,12 @@ namespace LangDetector.Core
 
 
             await conexion.ExecuteAsync(insertSelect, new { documentoId = documento.Id, idiomaId = idioma.Id });
+        }
+
+        internal async Task EliminarPalabras(Documento documento)
+        {
+            const string delete = @"DELETE FROM DOCUMENTOS_PALABRAS WHERE DOCUMENTO_ID = @documentoId";
+            await conexion.ExecuteAsync(delete, new { documentoId = documento.Id });
         }
 
         internal async Task<Documento> ObtenerDocumento(string hash, int palabrasDistintas)

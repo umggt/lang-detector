@@ -8,7 +8,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using System.Transactions;
 
 namespace LangDetector.Core
 {
@@ -81,10 +80,10 @@ namespace LangDetector.Core
 
         private async Task Recordar(Documento documento, Idioma idioma, bool cienPorcientoSeguro = false)
         {
-            await repositorio.CopiarLetrasNuevas(documento, idioma);
-            await repositorio.CopiarPalabrasNuevas(documento, idioma);
             await repositorio.ActualizarLetrasExistentes(documento, idioma);
             await repositorio.ActualizarPalabrasExistentes(documento, idioma);
+            await repositorio.CopiarLetrasNuevas(documento, idioma);
+            await repositorio.CopiarPalabrasNuevas(documento, idioma);
             await repositorio.ActualizarTotales(idioma);
             await repositorio.ActualizarPorcentajeEnLetras(idioma);
             await repositorio.ActualizarPorcentajeEnPalabras(idioma);
@@ -93,6 +92,7 @@ namespace LangDetector.Core
             {
                 documento.Confianza = 100;
                 await repositorio.EliminarLetras(documento);
+                await repositorio.EliminarPalabras(documento);
             }
 
             documento.IdiomaId = idioma.Id;
