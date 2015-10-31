@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections;
 
 namespace LangDetector.Core
 {
@@ -62,6 +63,14 @@ namespace LangDetector.Core
 
             var id = await conexion.QueryAsync<long>(selectId);
             return id.FirstOrDefault();
+        }
+
+        internal IEnumerable<Idioma> ObtenerIdiomas()
+        {
+            const string select = @"SELECT ID, NOMBRE, LETRAS, LETRAS_DISTINTAS LetrasDistintas, SIGNOS, SIGNOS_DISTINTOS SignosDistintos, SIMBOLOS, SIMBOLOS_DISTINTOS SimbolosDistintos FROM IDIOMAS ORDER BY NOMBRE";
+            
+            var resultado = conexion.Query<Idioma>(select);
+            return resultado.ToArray();
         }
 
         public async Task Insertar(IEnumerable<DocumentoLetra> letras)
@@ -204,14 +213,14 @@ namespace LangDetector.Core
         {
             const string update = @"
             UPDATE IDIOMAS SET 
-                LETRAS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1),
-                LETRAS_DISTINTAS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1),
-                SIGNOS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2),
-                SIGNOS_DISTINTOS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2),
-                SIMBOLOS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3),
-                SIMBOLOS_DISTINTOS = (SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3),
-                PALABRAS = (SELECT SUM(CANTIDAD) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId),
-                PALABRAS_DISTINTAS = (SELECT COUNT(*) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId)";
+                LETRAS = IFNULL((SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1), 0),
+                LETRAS_DISTINTAS = IFNULL((SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 1), 0),
+                SIGNOS = IFNULL((SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2), 0),
+                SIGNOS_DISTINTOS = IFNULL((SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 2), 0),
+                SIMBOLOS = IFNULL((SELECT SUM(CANTIDAD) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3), 0),
+                SIMBOLOS_DISTINTOS = IFNULL((SELECT COUNT(*) FROM IDIOMAS_LETRAS WHERE IDIOMA_ID = @idiomaId AND TIPO = 3), 0),
+                PALABRAS = IFNULL((SELECT SUM(CANTIDAD) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId), 0),
+                PALABRAS_DISTINTAS = IFNULL((SELECT COUNT(*) FROM IDIOMAS_PALABRAS WHERE IDIOMA_ID = @idiomaId), 0)";
 
 
             await conexion.ExecuteAsync(update, new { idiomaId = idioma.Id });
@@ -221,7 +230,7 @@ namespace LangDetector.Core
         {
             const string insertSelect = @"
             UPDATE IDIOMAS_LETRAS
-                SET CANTIDAD = CANTIDAD + (SELECT SUM(CANTIDAD) FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId AND DOCUMENTOS_LETRAS.LETRA_ID = IDIOMAS_LETRAS.LETRA_ID)
+                SET CANTIDAD = CANTIDAD + IFNULL((SELECT SUM(CANTIDAD) FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId AND DOCUMENTOS_LETRAS.LETRA_ID = IDIOMAS_LETRAS.LETRA_ID), 0)
             WHERE 
                 IDIOMAS_LETRAS.IDIOMA_ID = @idiomaId
                 AND LETRA_ID IN (SELECT LETRA_ID FROM DOCUMENTOS_LETRAS WHERE DOCUMENTO_ID = @documentoId)
@@ -234,14 +243,14 @@ namespace LangDetector.Core
         {
             const string insertSelect = @"
             UPDATE IDIOMAS_PALABRAS
-                SET CANTIDAD = CANTIDAD + (
+                SET CANTIDAD = CANTIDAD + IFNULL((
                     SELECT 
                         SUM(CANTIDAD) 
                     FROM 
                         DOCUMENTOS_PALABRAS 
                     WHERE 
                         DOCUMENTOS_PALABRAS.PALABRA = IDIOMAS_PALABRAS.PALABRA 
-                        AND DOCUMENTOS_PALABRAS.DOCUMENTO_ID = @documentoId)
+                        AND DOCUMENTOS_PALABRAS.DOCUMENTO_ID = @documentoId), 0)
             WHERE 
                 IDIOMA_ID = @idiomaId
             ";

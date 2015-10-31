@@ -46,9 +46,10 @@ namespace LangDetector
             ProcesarButton.IsEnabled = false;
             ProgressBar.Value = 0;
 
+            var entrenar = mnuEntrenamiento.IsChecked;
             var ruta = RutaArchivoTextBox.Text;
 
-            using (var agente = new Agente(ruta))
+            using (var agente = new Agente(ruta, entrenar))
             {
                 agente.SolicitarIdioma += SolicitarIdioma;
                 agente.AvanceParcial += AvanceParcial;
@@ -56,7 +57,7 @@ namespace LangDetector
 
                 try
                 {
-                    var result = await await Task.Factory.StartNew(() => agente.IdentificarIdioma());
+                    var result = await await Task.Factory.StartNew(agente.IdentificarIdioma);
                     
                 }
                 catch (Exception ex)
@@ -85,18 +86,24 @@ namespace LangDetector
             });
         }
 
-        private void SolicitarIdioma(object sender, SinIdiomasEventArgs e)
+        private void SolicitarIdioma(object sender, SolicitarIdiomaEventArgs e)
         {
             Dispatcher.Invoke(() => {
                 var ventana = new SolicitarIdiomaWindow();
-                ventana.Height = 220;
+                ventana.Height = 250;
 
-                ventana.EstablecerMensaje(e.Mensaje);
+                ventana.EstablecerParametros(e);
+                
                 var result = ventana.ShowDialog();
 
                 if (result == true)
                 {
-                    e.NombreIdioma = ventana.ObtenerNombreIdioma();
+                    var idioma = ventana.ObtenerIdioma();
+                    if (idioma.Id > 0)
+                    {
+                        e.IdiomaId = idioma.Id;
+                    }
+                    e.IdiomaNombre = idioma.Nombre;
                 }
             });
         }

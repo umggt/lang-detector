@@ -16,12 +16,13 @@ namespace LangDetector.Core
         private const double totalPasos = 6;
         private readonly string archivo;
         private readonly Repositorio repositorio;
+        private readonly bool modoEntrenamiento;
 
-        public event EventHandler<SinIdiomasEventArgs> SolicitarIdioma;
+        public event EventHandler<SolicitarIdiomaEventArgs> SolicitarIdioma;
         public event EventHandler<AvanceEventArgs> AvanceGlobal;
         public event EventHandler<AvanceEventArgs> AvanceParcial;
 
-        public Agente(string archivo)
+        public Agente(string archivo, bool modoEntrenamiento)
         {
             if (!File.Exists(archivo))
             {
@@ -29,6 +30,7 @@ namespace LangDetector.Core
             }
 
             this.archivo = archivo;
+            this.modoEntrenamiento = modoEntrenamiento;
             repositorio = new Repositorio();
         }
 
@@ -51,21 +53,37 @@ namespace LangDetector.Core
                     throw new InvalidOperationException("El agente no sabe ningún idioma y no sabe a quién preguntarle.");
                 }
 
-                var parametros = new SinIdiomasEventArgs { Mensaje = "El agente no sabe ningún idioma, por lo que necesita que le digas en qué idioma está escrito este documento." };
+                var parametros = new SolicitarIdiomaEventArgs { Repositorio = repositorio, Mensaje = "El agente no sabe ningún idioma, por lo que necesita que le digas en qué idioma está escrito este documento." };
                 SolicitarIdioma(this, parametros);
 
-                if (string.IsNullOrWhiteSpace(parametros.NombreIdioma))
+                if (string.IsNullOrWhiteSpace(parametros.IdiomaNombre))
                 {
                     throw new InvalidOperationException("El agente no sabe ningún idioma, preguntó pero no le indicaron ningún idioma de referencia.");
                 }
 
-                var idioma = new Idioma { Nombre = parametros.NombreIdioma };
+                var idioma = new Idioma { Nombre = parametros.IdiomaNombre };
                 await Recordar(idioma);
                 await Recordar(documento, idioma, cienPorcientoSeguro: true);
 
             }
             else if (documento.IdiomaId == null)
             {
+                if (modoEntrenamiento)
+                {
+                    var parametros = new SolicitarIdiomaEventArgs { Repositorio = repositorio, Mensaje = "El agente está en modo entrenamiento, Especifica el idioma del documento." };
+                    SolicitarIdioma(this, parametros);
+
+                    if (string.IsNullOrWhiteSpace(parametros.IdiomaNombre))
+                    {
+                        throw new InvalidOperationException("El agente se encuentra en modo entrenamiento, pero no se le ha especificado ningún idioma.");
+                    }
+
+                    var idioma = new Idioma { Id = parametros.IdiomaId ?? 0, Nombre = parametros.IdiomaNombre };
+
+                    await Recordar(idioma);
+                    await Recordar(documento, idioma, cienPorcientoSeguro: true);
+                }
+
                 // TODO: Analizar
             }
 
@@ -75,7 +93,10 @@ namespace LangDetector.Core
 
         private async Task Recordar(Idioma idioma)
         {
-            idioma.Id = await repositorio.Insertar(idioma);
+            if (idioma.Id <= 0)
+            {
+                idioma.Id = await repositorio.Insertar(idioma);
+            }
         }
 
         private async Task Recordar(Documento documento, Idioma idioma, bool cienPorcientoSeguro = false)
@@ -91,8 +112,8 @@ namespace LangDetector.Core
             if (cienPorcientoSeguro)
             {
                 documento.Confianza = 100;
-                await repositorio.EliminarLetras(documento);
-                await repositorio.EliminarPalabras(documento);
+                //await repositorio.EliminarLetras(documento);
+                //await repositorio.EliminarPalabras(documento);
             }
 
             documento.IdiomaId = idioma.Id;
