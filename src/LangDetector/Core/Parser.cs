@@ -121,17 +121,20 @@ namespace LangDetector.Core
                         else if (letrasPalabra.Count > 0)
                         {
 
-                            palabrasCantidad++;
-
-                            var palabra = new string(letrasPalabra.ToArray()).ToLowerInvariant();
-
-                            if (palabras.ContainsKey(palabra))
+                            if (letrasPalabra.Count <= 5)
                             {
-                                palabras[palabra]++;
-                            }
-                            else
-                            {
-                                palabras.Add(palabra, 1);
+                                palabrasCantidad++;
+
+                                var palabra = new string(letrasPalabra.ToArray()).ToLowerInvariant();
+
+                                if (palabras.ContainsKey(palabra))
+                                {
+                                    palabras[palabra]++;
+                                }
+                                else
+                                {
+                                    palabras.Add(palabra, 1);
+                                }
                             }
 
                             letrasPalabra.Clear();

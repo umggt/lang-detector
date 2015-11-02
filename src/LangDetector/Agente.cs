@@ -136,7 +136,7 @@ namespace LangDetector
 
             if (idioma != null)
             {
-                documentoProcesado.Idioma = idioma.Nombre;
+                documentoProcesado.Idioma = idioma;
             }
 
             documentoProcesado.Hash = hash;

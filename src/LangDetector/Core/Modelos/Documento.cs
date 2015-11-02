@@ -7,6 +7,7 @@
     class Documento
     {
         public string Hash { get; set; }
+        public string Idioma { get; set; }
 
         public int Letras { get; set; }
         public int Palabras { get; set; }

@@ -11,19 +11,16 @@ namespace LangDetector.Core
 
         public Cerebro()
         {
-            Memoria = new Memoria(cargar: true);
+            Memoria = new Memoria();
         }
 
-        public Idioma RecordarDocumento(string hash)
+        public string RecordarDocumento(string hash)
         {
-            foreach (var idioma in Memoria.Idiomas.Select(x => x.Value))
+            foreach (var doc in Memoria.Documentos.Select(x => x.Value))
             {
-                foreach (var doc in idioma.Documentos.Select(x => x.Value))
+                if (doc.Hash == hash)
                 {
-                    if (doc.Hash == hash)
-                    {
-                        return idioma;
-                    }
+                    return doc.Idioma;
                 }
             }
 
@@ -32,7 +29,7 @@ namespace LangDetector.Core
 
         public int CuantosIdiomasConozco()
         {
-            return Memoria.Idiomas.Count;
+            return Memoria.CantidadIdiomas;
         }
 
         public void Entrena(DocumentoProcesado documentoProcesado, string nombreIdioma)
@@ -74,7 +71,8 @@ namespace LangDetector.Core
                 RegistrarSimboloSiNoExiste(idioma, simbolo.Key, simbolo.Value);
             }
 
-            RegistrarDocumentoProcesado(documentoProcesado, idioma);
+            documentoProcesado.Idioma = nombreIdioma;
+            RegistrarDocumentoProcesado(documentoProcesado);
 
             foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
             {
@@ -96,7 +94,6 @@ namespace LangDetector.Core
 
             Memoria.RecordarALargoPlazo();
 
-            documentoProcesado.Idioma = nombreIdioma;
         }
 
         public IEnumerable<IdentificacionResultado> Identifica(DocumentoProcesado documentoProcesado)
@@ -116,37 +113,16 @@ namespace LangDetector.Core
                         continue;
                     }
 
-                    Palabra palabra;
+                    Palabra palabra = Memoria.Palabras[palabraDoc.Key];
 
-                    if (idioma.Palabras.ContainsKey(palabraDoc.Key))
-                    {
-                        palabra = idioma.Palabras[palabraDoc.Key];
-                    }
-                    else
-                    {
-                        palabra = new Palabra();
-                    }
+                    double cantidadEnIdioma = palabra.Idiomas.ContainsKey(idioma.Nombre) ? palabra.Idiomas[idioma.Nombre] : 0;
 
-                    double probabilidadPalabra = 0;
-                    double probabilidadInversa = 0;
-                    double bayes = 0;
+                    double probabilidadPalabra = cantidadEnIdioma / idioma.CantidadDocumentos;
+                    double probabilidadInversa = (palabra.Cantidad - cantidadEnIdioma) / (Memoria.CantidadDocumentos - idioma.CantidadDocumentos);
+                    double bayes = probabilidadPalabra / (probabilidadPalabra + probabilidadInversa); ;
+                    
 
-                    if (idioma.CantidadDocumentos > 0)
-                    {
-                        probabilidadPalabra = palabra.CantidadEnIdioma / (double)idioma.CantidadDocumentos;
-                    }
-
-                    if (idioma.CantidadInversaDocumentos > 0)
-                    {
-                        probabilidadInversa = palabra.CantidadOtrosIdiomas / (double)idioma.CantidadInversaDocumentos;
-                    }
-
-                    if ((probabilidadPalabra + probabilidadInversa) > 0)
-                    {
-                        bayes = probabilidadPalabra / (probabilidadPalabra + probabilidadInversa);
-                    }
-
-                    bayes = ((1 * 0.5) + (Memoria.Palabras[palabraDoc.Key] * bayes)) / (1 + Memoria.Palabras[palabraDoc.Key]);
+                    bayes = ((1 * 0.5) + (palabra.Cantidad * bayes)) / (1 + palabra.Cantidad);
 
                     if (bayes == 0)
                     {
@@ -171,12 +147,12 @@ namespace LangDetector.Core
             return resultados.OrderByDescending(x => x.Certeza).ToArray();
         }
 
-        private static void RegistrarDocumentoProcesado(DocumentoProcesado documentoProcesado, Idioma idioma)
+        private void RegistrarDocumentoProcesado(DocumentoProcesado documentoProcesado)
         {
             var documento = new Documento()
             {
                 Hash = documentoProcesado.Hash,
-
+                Idioma = documentoProcesado.Idioma,
                 Palabras = documentoProcesado.CantidadPalabras,
                 Letras = documentoProcesado.CantidadLetras,
                 Signos = documentoProcesado.CantidadSignos,
@@ -188,38 +164,32 @@ namespace LangDetector.Core
                 SimbolosDistintos = documentoProcesado.Simbolos.Count
             };
 
-            idioma.Documentos.Add(documento.Hash, documento);
+            Memoria.Documentos.Add(documento.Hash, documento);
         }
 
         private void RegistrarPalabraSiNoExiste(Idioma idioma, string textPalabra, int cantidad)
         {
             Palabra palabra;
 
-            if (idioma.Palabras.ContainsKey(textPalabra))
+            if (Memoria.Palabras.ContainsKey(textPalabra))
             {
-                palabra = idioma.Palabras[textPalabra];
-
-                palabra.CantidadEnDocumentos++;
-                palabra.CantidadEnIdioma += cantidad;
-
+                palabra = Memoria.Palabras[textPalabra];
+                palabra.Cantidad += cantidad;
+                palabra.Documentos++;
             }
             else
             {
-                palabra = new Palabra { Texto = textPalabra, CantidadEnIdioma = cantidad, CantidadEnDocumentos = 1 };
-                idioma.Palabras.Add(palabra.Texto, palabra);
+                palabra = new Palabra { Texto = textPalabra, Cantidad = cantidad, Documentos = 1 };
+                Memoria.Palabras.Add(palabra.Texto, palabra);
             }
 
-            var palabraOtrosIdiomas = BuscarPalabraEnOtrosIdiomas(palabra, idioma.Nombre);
-
-            palabra.CantidadOtrosIdiomas = palabraOtrosIdiomas.CantidadOtrosIdiomas;
-            palabra.CantidadOtrosDocumentos = palabraOtrosIdiomas.CantidadOtrosDocumentos;
-
-            if (Memoria.Palabras.ContainsKey(textPalabra)) {
-                Memoria.Palabras[textPalabra]++;
+            if (palabra.Idiomas.ContainsKey(idioma.Nombre))
+            {
+                palabra.Idiomas[idioma.Nombre]++;
             }
             else
             {
-                Memoria.Palabras.Add(textPalabra, 1);
+                palabra.Idiomas.Add(idioma.Nombre, 1);
             }
 
         }
@@ -228,21 +198,26 @@ namespace LangDetector.Core
         {
             Letra letra;
 
-            if (idioma.Letras.ContainsKey(caracter))
+            if (Memoria.Letras.ContainsKey(caracter))
             {
-                letra = idioma.Letras[caracter];
-                letra.CantidadEnDocumentos++;
-                letra.CantidadEnIdioma += cantidad;
+                letra = Memoria.Letras[caracter];
+                letra.Cantidad += cantidad;
+                letra.Documentos++;
             }
             else
             {
-                letra = new Letra { Caracter = caracter, CantidadEnIdioma = cantidad, CantidadEnDocumentos = 1 };
-                idioma.Letras.Add(letra.Caracter, letra);
+                letra = new Letra { Caracter = caracter, Cantidad = cantidad, Documentos = 1 };
+                Memoria.Letras.Add(letra.Caracter, letra);
             }
 
-            var letraOtrosIdiomas = BuscarLetraEnOtrosIdiomas(letra, idioma.Nombre);
-            letra.CantidadOtrosIdiomas = letraOtrosIdiomas.CantidadOtrosIdiomas;
-            letra.CantidadOtrosDocumentos = letraOtrosIdiomas.CantidadOtrosDocumentos;
+            if (letra.Idiomas.ContainsKey(idioma.Nombre))
+            {
+                letra.Idiomas[idioma.Nombre]++;
+            }
+            else
+            {
+                letra.Idiomas.Add(idioma.Nombre, 1);
+            }
 
         }
 
@@ -250,141 +225,53 @@ namespace LangDetector.Core
         {
             Signo signo;
 
-            if (idioma.Signos.ContainsKey(caracter))
+            if (Memoria.Signos.ContainsKey(caracter))
             {
-                signo = idioma.Signos[caracter];
-                signo.CantidadEnDocumentos++;
-                signo.CantidadEnIdioma += cantidad;
+                signo = Memoria.Signos[caracter];
+                signo.Cantidad += cantidad;
+                signo.Documentos++;
             }
             else
             {
-                signo = new Signo { Caracter = caracter, CantidadEnIdioma = cantidad, CantidadEnDocumentos = 1 };
-                idioma.Signos.Add(signo.Caracter, signo);
+                signo = new Signo { Caracter = caracter, Cantidad = cantidad, Documentos = 1 };
+                Memoria.Signos.Add(signo.Caracter, signo);
             }
 
-            var signoOtrosIdiomas = BuscarSignoEnOtrosIdiomas(signo, idioma.Nombre);
-            signo.CantidadOtrosIdiomas = signoOtrosIdiomas.CantidadOtrosIdiomas;
-            signo.CantidadOtrosDocumentos = signoOtrosIdiomas.CantidadOtrosDocumentos;
-
+            if (signo.Idiomas.ContainsKey(idioma.Nombre))
+            {
+                signo.Idiomas[idioma.Nombre]++;
+            }
+            else
+            {
+                signo.Idiomas.Add(idioma.Nombre, 1);
+            }
         }
 
         private void RegistrarSimboloSiNoExiste(Idioma idioma, char caracter, int cantidad)
         {
             Simbolo simbolo;
 
-            if (idioma.Simbolos.ContainsKey(caracter))
+            if (Memoria.Simbolos.ContainsKey(caracter))
             {
-                simbolo = idioma.Simbolos[caracter];
-                simbolo.CantidadEnDocumentos++;
-                simbolo.CantidadEnIdioma += cantidad;
+                simbolo = Memoria.Simbolos[caracter];
+                simbolo.Cantidad += cantidad;
+                simbolo.Documentos++;
             }
             else
             {
-                simbolo = new Simbolo { Caracter = caracter, CantidadEnIdioma = cantidad, CantidadEnDocumentos = 1 };
-                idioma.Simbolos.Add(simbolo.Caracter, simbolo);
+                simbolo = new Simbolo { Caracter = caracter, Cantidad = cantidad, Documentos = 1 };
+                Memoria.Simbolos.Add(simbolo.Caracter, simbolo);
             }
 
-            var simboloOtrosIdiomas = BuscarSimboloEnOtrosIdiomas(simbolo, idioma.Nombre);
-            simbolo.CantidadOtrosIdiomas = simboloOtrosIdiomas.CantidadOtrosIdiomas;
-            simbolo.CantidadOtrosDocumentos = simboloOtrosIdiomas.CantidadOtrosDocumentos;
-
-        }
-
-        private Palabra BuscarPalabraEnOtrosIdiomas(Palabra palabra, string nombreIdioma)
-        {
-            Palabra palabraRetorno = new Palabra();
-
-            foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
+            if (simbolo.Idiomas.ContainsKey(idioma.Nombre))
             {
-                if (otroIdioma.Nombre != nombreIdioma)
-                {
-                    if (otroIdioma.Palabras.ContainsKey(palabra.Texto))
-                    {
-                        var palabraOtroIdioma = otroIdioma.Palabras[palabra.Texto];
-
-                        palabraRetorno.CantidadOtrosIdiomas += palabraOtroIdioma.CantidadEnIdioma;
-                        palabraRetorno.CantidadOtrosDocumentos += palabraOtroIdioma.CantidadEnDocumentos;
-
-                        palabraOtroIdioma.CantidadOtrosIdiomas += palabra.CantidadEnIdioma;
-                        palabraOtroIdioma.CantidadOtrosDocumentos += palabra.CantidadEnDocumentos;
-                    }
-                }
+                simbolo.Idiomas[idioma.Nombre]++;
             }
-
-            return palabraRetorno;
-        }
-
-        private Letra BuscarLetraEnOtrosIdiomas(Letra letra, string nombreIdioma)
-        {
-            Letra letraRetorno = new Letra();
-
-            foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
+            else
             {
-                if (otroIdioma.Nombre != nombreIdioma)
-                {
-                    if (otroIdioma.Letras.ContainsKey(letra.Caracter))
-                    {
-                        var letraOtroIdioma = otroIdioma.Letras[letra.Caracter];
-
-                        letraRetorno.CantidadOtrosIdiomas += letraOtroIdioma.CantidadEnIdioma;
-                        letraRetorno.CantidadOtrosDocumentos += letraOtroIdioma.CantidadEnDocumentos;
-
-                        letraOtroIdioma.CantidadOtrosIdiomas += letra.CantidadEnIdioma;
-                        letraOtroIdioma.CantidadOtrosDocumentos += letra.CantidadOtrosDocumentos;
-                    }
-                }
+                simbolo.Idiomas.Add(idioma.Nombre, 1);
             }
 
-            return letraRetorno;
-        }
-
-        private Signo BuscarSignoEnOtrosIdiomas(Signo signo, string nombreIdioma)
-        {
-            Signo signoRetorno = new Signo();
-
-            foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
-            {
-                if (otroIdioma.Nombre != nombreIdioma)
-                {
-                    if (otroIdioma.Signos.ContainsKey(signo.Caracter))
-                    {
-                        var signoOtroIdioma = otroIdioma.Signos[signo.Caracter];
-
-                        signoRetorno.CantidadOtrosIdiomas += signoOtroIdioma.CantidadEnIdioma;
-                        signoRetorno.CantidadOtrosDocumentos += signoOtroIdioma.CantidadEnDocumentos;
-
-                        signoOtroIdioma.CantidadOtrosIdiomas += signo.CantidadEnIdioma;
-                        signoOtroIdioma.CantidadOtrosDocumentos += signo.CantidadEnDocumentos;
-
-                    }
-                }
-            }
-
-            return signoRetorno;
-        }
-
-        private Simbolo BuscarSimboloEnOtrosIdiomas(Simbolo simbolo, string nombreIdioma)
-        {
-            Simbolo simboloRetorno = new Simbolo();
-
-            foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
-            {
-                if (otroIdioma.Nombre != nombreIdioma)
-                {
-                    if (otroIdioma.Simbolos.ContainsKey(simbolo.Caracter))
-                    {
-                        var simboloOtroIdioma = otroIdioma.Simbolos[simbolo.Caracter];
-
-                        simboloRetorno.CantidadOtrosIdiomas += simboloOtroIdioma.CantidadEnIdioma;
-                        simboloRetorno.CantidadOtrosDocumentos += simboloOtroIdioma.CantidadEnDocumentos;
-
-                        simboloOtroIdioma.CantidadOtrosIdiomas += simbolo.CantidadEnIdioma;
-                        simboloOtroIdioma.CantidadOtrosDocumentos += simbolo.CantidadEnDocumentos;
-                    }
-                }
-            }
-
-            return simboloRetorno;
         }
 
         private Idioma RegistrarIdiomaSiNoExiste(string nombreIdioma)
