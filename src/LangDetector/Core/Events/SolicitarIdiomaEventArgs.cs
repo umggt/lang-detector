@@ -6,8 +6,7 @@ namespace LangDetector.Core.Events
     {
 
         public string Mensaje { get; set; }
-        public long? IdiomaId { get; set; }
-        public string IdiomaNombre { get; set; }
-        internal Repositorio Repositorio { get; set; }
+        public string Idioma { get; set; }
+        public string[] Idiomas { get; set; }
     }
 }

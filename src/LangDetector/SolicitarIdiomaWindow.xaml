@@ -18,7 +18,7 @@
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
         <TextBlock x:Name="txtMensaje" Text=""  Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="10" />
-        <ComboBox x:Name="cmbIdiomas" Grid.Row="1" Grid.ColumnSpan="2" Margin="10" DisplayMemberPath="Nombre" SelectionChanged="cmbIdiomas_SelectionChanged">
+        <ComboBox x:Name="cmbIdiomas" Grid.Row="1" Grid.ColumnSpan="2" Margin="10" SelectionChanged="cmbIdiomas_SelectionChanged">
         </ComboBox>
         <TextBox x:Name="txtNombreIdioma" Grid.ColumnSpan="2" Grid.Row="2" Margin="10" IsEnabled="False" />
         <Button x:Name="btnAceptar" Content="Aceptar" Grid.Row="3" Margin="10" Click="btnAceptar_Click" />

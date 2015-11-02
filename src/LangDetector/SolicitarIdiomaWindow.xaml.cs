@@ -1,8 +1,6 @@
-﻿using LangDetector.Core;
-using System.Windows;
-using LangDetector.Core.Events;
+﻿using LangDetector.Core.Events;
 using System.Linq;
-using LangDetector.Core.Modelos;
+using System.Windows;
 
 namespace LangDetector
 {
@@ -41,16 +39,16 @@ namespace LangDetector
             Close();
         }
 
-        internal Idioma ObtenerIdioma()
+        internal string ObtenerIdioma()
         {
-            var item = cmbIdiomas.SelectedItem as Idioma;
-            if (item != null && item.Id > 0)
+            var item = cmbIdiomas.SelectedItem as string;
+            if (item != null && item != " (Nuevo) ")
             {
                 return item;
             }
             else if (!string.IsNullOrWhiteSpace(txtNombreIdioma.Text))
             {
-                return new Idioma { Nombre = txtNombreIdioma.Text };
+                return txtNombreIdioma.Text;
             }
             else
             {
@@ -64,16 +62,16 @@ namespace LangDetector
         {
             this.parametros = parametros;
             txtMensaje.Text = parametros.Mensaje;
-            var data = (new[] { new Idioma() { Nombre = " (Nuevo) " } }).Union(parametros.Repositorio.ObtenerIdiomas());
+            var data = (new[] { " (Nuevo) " }).Union(parametros.Idiomas);
             cmbIdiomas.ItemsSource = data;
-            cmbIdiomas.SelectedItem = data.FirstOrDefault(x => x.Id == 0);
+            cmbIdiomas.SelectedItem = data.FirstOrDefault(x => x == " (Nuevo) ");
 
         }
 
         private void cmbIdiomas_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            var item = cmbIdiomas.SelectedItem as Idioma;
-            if (item == null || item.Id == 0)
+            var item = cmbIdiomas.SelectedItem as string;
+            if (item == null || item == " (Nuevo) ")
             {
                 txtNombreIdioma.IsEnabled = true;
             }

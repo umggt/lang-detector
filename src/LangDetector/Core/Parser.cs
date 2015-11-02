@@ -186,10 +186,10 @@ namespace LangDetector.Core
                 Palabras = palabras,
                 Signos = signos,
                 Simbolos = simbolos,
-                LetrasCantidad = letrasCantidad,
-                PalabrasCantidad = palabrasCantidad,
-                SignosCantidad = signosCantidad,
-                SimbolosCantidad = simbolosCantidad
+                CantidadLetras = letrasCantidad,
+                CantidadPalabras = palabrasCantidad,
+                CantidadSignos = signosCantidad,
+                CantidadSimbolos = simbolosCantidad
             };
         }
 

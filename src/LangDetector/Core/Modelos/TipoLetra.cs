@@ -1,6 +1,6 @@
 ﻿namespace LangDetector.Core.Modelos
 {
-    enum DocumentoTipoLetra : int
+    enum TipoLetra : int
     {
         Letra = 1,
         SignoDePuntuacion = 2,

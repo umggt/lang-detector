@@ -2,16 +2,19 @@
 
 namespace LangDetector.Core.Modelos
 {
-    public class DocumentoProcesado
+    class DocumentoProcesado
     {
+        public IDictionary<string, int> Palabras { get; set; }
         public IDictionary<char, int> Letras { get; set; }
         public IDictionary<char, int> Signos { get; set; }
         public IDictionary<char, int> Simbolos { get; set; }
-        public IDictionary<string, int> Palabras { get; set; }
 
-        public int LetrasCantidad { get; set; }
-        public int SignosCantidad { get; set; }
-        public int SimbolosCantidad { get; set; }
-        public int PalabrasCantidad { get; set; }
+        public int CantidadLetras { get; set; }
+        public int CantidadSignos { get; set; }
+        public int CantidadSimbolos { get; set; }
+        public int CantidadPalabras { get; set; }
+
+        public string Idioma { get; set; }
+        public string Hash { get; set; }
     }
 }

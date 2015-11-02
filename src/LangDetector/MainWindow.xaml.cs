@@ -1,10 +1,10 @@
-﻿using LangDetector.Core;
-using LangDetector.Core.Events;
+﻿using LangDetector.Core.Events;
 using Microsoft.Win32;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Linq;
 
 namespace LangDetector
 {
@@ -49,26 +49,26 @@ namespace LangDetector
             var entrenar = mnuEntrenamiento.IsChecked;
             var ruta = RutaArchivoTextBox.Text;
 
-            using (var agente = new Agente(ruta, entrenar))
+
+            try
             {
+                var agente = new Agente(ruta, entrenar);
+
                 agente.SolicitarIdioma += SolicitarIdioma;
                 agente.AvanceParcial += AvanceParcial;
                 agente.AvanceGlobal += AvanceGlobal;
-
-                try
-                {
-                    var result = await await Task.Factory.StartNew(agente.IdentificarIdioma);
-                    
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "Error al identificar el idioma", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-
+                var result = await await Task.Factory.StartNew(agente.IdentificarIdioma);
                 agente.SolicitarIdioma -= SolicitarIdioma;
                 agente.AvanceParcial -= AvanceParcial;
                 agente.AvanceGlobal -= AvanceGlobal;
+                MessageBox.Show("Todo OK " + result.First().Idioma + " " + result.First().Certeza.ToString("P"), "Todo OK", MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error al identificar el idioma", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+
         }
 
         private void AvanceGlobal(object sender, AvanceEventArgs e)
@@ -90,7 +90,7 @@ namespace LangDetector
         {
             Dispatcher.Invoke(() => {
                 var ventana = new SolicitarIdiomaWindow();
-                ventana.Height = 250;
+                ventana.Height = 300;
 
                 ventana.EstablecerParametros(e);
                 
@@ -98,12 +98,7 @@ namespace LangDetector
 
                 if (result == true)
                 {
-                    var idioma = ventana.ObtenerIdioma();
-                    if (idioma.Id > 0)
-                    {
-                        e.IdiomaId = idioma.Id;
-                    }
-                    e.IdiomaNombre = idioma.Nombre;
+                    e.Idioma = ventana.ObtenerIdioma();
                 }
             });
         }
