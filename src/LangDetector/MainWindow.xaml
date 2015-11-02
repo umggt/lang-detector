@@ -30,7 +30,7 @@
             <TextBox x:Name="ResultadoTextBox" TextWrapping="NoWrap" FontFamily="Consolas" IsReadOnly="True" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True" />
         </ScrollViewer>
 
-        <ProgressBar x:Name="ProgressBar" Margin="10" Grid.Row="4" />
+        <ProgressBar x:Name="ProgressBar" Margin="10" Grid.Row="4" Visibility="Collapsed" />
         <ProgressBar x:Name="ProgressBar2" Margin="10" Grid.Row="5" />
 
     </Grid>

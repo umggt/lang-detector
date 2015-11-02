@@ -61,7 +61,16 @@ namespace LangDetector
                 agente.SolicitarIdioma -= SolicitarIdioma;
                 agente.AvanceParcial -= AvanceParcial;
                 agente.AvanceGlobal -= AvanceGlobal;
-                MessageBox.Show("Todo OK " + result.First().Idioma + " " + result.First().Certeza.ToString("P"), "Todo OK", MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
+
+                var idioma = result.First();
+                if (idioma.Certeza >= 0.5)
+                {
+                    MessageBox.Show(string.Format("Documento escrito en {0},\r\nestoy un {1:P4} seguro", idioma.Idioma, idioma.Certeza), "Documento reconocido", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(string.Format("Creo que el documento está escrito en {0},\r\n pero lo dudo mucho,\r\nestoy un {1:P4} seguro", idioma.Idioma, idioma.Certeza), "Documento reconocido con duda", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
