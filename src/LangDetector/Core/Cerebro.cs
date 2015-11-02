@@ -74,24 +74,6 @@ namespace LangDetector.Core
             documentoProcesado.Idioma = nombreIdioma;
             RegistrarDocumentoProcesado(documentoProcesado);
 
-            foreach (var otroIdioma in Memoria.Idiomas.Select(x => x.Value))
-            {
-                if (otroIdioma.Nombre != idioma.Nombre)
-                {
-                    otroIdioma.CantidadInversaDocumentos += idioma.CantidadDocumentos;
-                    otroIdioma.CantidadInversaPalabras += idioma.CantidadPalabras;
-                    otroIdioma.CantidadInversaLetras += idioma.CantidadLetras;
-                    otroIdioma.CantidadInversaSignos += idioma.CantidadSignos;
-                    otroIdioma.CantidadInversaSimbolos += idioma.CantidadSimbolos;
-
-                    idioma.CantidadInversaDocumentos += otroIdioma.CantidadDocumentos;
-                    idioma.CantidadInversaPalabras += otroIdioma.CantidadPalabras;
-                    idioma.CantidadInversaLetras += otroIdioma.CantidadLetras;
-                    idioma.CantidadInversaSignos += otroIdioma.CantidadSignos;
-                    idioma.CantidadInversaSimbolos += otroIdioma.CantidadSimbolos;
-                }
-            }
-
             Memoria.RecordarALargoPlazo();
 
         }
@@ -185,7 +167,7 @@ namespace LangDetector.Core
 
             if (palabra.Idiomas.ContainsKey(idioma.Nombre))
             {
-                palabra.Idiomas[idioma.Nombre]++;
+                palabra.Idiomas[idioma.Nombre] += cantidad;
             }
             else
             {

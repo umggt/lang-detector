@@ -107,15 +107,17 @@ namespace LangDetector.Core
                         {
                             letrasCantidad++;
 
-                            letrasPalabra.Add(caracter);
+                            var c = char.ToLowerInvariant(caracter);
 
-                            if (letras.ContainsKey(caracter))
+                            letrasPalabra.Add(c);
+
+                            if (letras.ContainsKey(c))
                             {
-                                letras[caracter]++;
+                                letras[c]++;
                             }
                             else
                             {
-                                letras.Add(caracter, 1);
+                                letras.Add(c, 1);
                             }
                         }
                         else if (letrasPalabra.Count > 0)

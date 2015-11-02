@@ -131,6 +131,7 @@ namespace LangDetector.Core
                 using (var writer = new JsonTextWriter(streamWriter))
                 {
                     var serializer = new JsonSerializer();
+                    serializer.Formatting = Formatting.Indented;
                     serializer.Serialize(writer, objeto);
                 }
             }
