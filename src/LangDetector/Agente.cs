@@ -34,6 +34,7 @@ namespace LangDetector
 
             this.archivo = archivo;
             this.modoEntrenamiento = modoEntrenamiento;
+            
         }
 
         public async Task<IEnumerable<IdentificacionResultado>> IdentificarIdioma()
@@ -69,7 +70,12 @@ namespace LangDetector
             }
 
             return cerebro.Identifica(documentoProcesado);
-            
+           
+        }
+
+        private void CuandoProgresaIdentificacion(object sender, AvanceEventArgs e)
+        {
+            NotificarAvanceParcial(e.Porcentaje);
         }
 
         private void Entrenar(DocumentoProcesado documentoProcesado)
@@ -176,6 +182,14 @@ namespace LangDetector
             if (AvanceParcial != null)
             {
                 AvanceParcial(this, new AvanceEventArgs { Porcentaje = (valor / total * 100) });
+            }
+        }
+
+        private void NotificarAvanceParcial(double porcentaje)
+        {
+            if (AvanceParcial != null)
+            {
+                AvanceParcial(this, new AvanceEventArgs { Porcentaje = porcentaje });
             }
         }
 

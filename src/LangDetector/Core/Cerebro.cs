@@ -1,6 +1,8 @@
-﻿using LangDetector.Core.Modelos;
+﻿using LangDetector.Core.Events;
+using LangDetector.Core.Modelos;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace LangDetector.Core
@@ -86,7 +88,8 @@ namespace LangDetector.Core
             foreach (var idioma in Memoria.Idiomas.Select(x => x.Value))
             {
                 double logSum = 0;
-                double probabilidadDoc = idioma.CantidadDocumentos / (double)Memoria.CantidadDocumentos;
+
+                //double probabilidadDoc = idioma.CantidadDocumentos / (double)Memoria.CantidadDocumentos;
 
                 foreach (var palabraDoc in documentoProcesado.Palabras)
                 {
@@ -101,8 +104,14 @@ namespace LangDetector.Core
 
                     double probabilidadPalabra = cantidadEnIdioma / idioma.CantidadDocumentos;
                     double probabilidadInversa = (palabra.Cantidad - cantidadEnIdioma) / (Memoria.CantidadDocumentos - idioma.CantidadDocumentos);
-                    double bayes = probabilidadPalabra / (probabilidadPalabra + probabilidadInversa); ;
-                    
+
+                    if (probabilidadPalabra + probabilidadInversa == 0)
+                    {
+                        continue;
+                    }
+
+                    double bayes = probabilidadPalabra / (probabilidadPalabra + probabilidadInversa);
+
 
                     bayes = ((1 * 0.5) + (palabra.Cantidad * bayes)) / (1 + palabra.Cantidad);
 
@@ -114,6 +123,16 @@ namespace LangDetector.Core
                     {
                         bayes = 0.99;
                     }
+                    else if (bayes > 1)
+                    {
+                        Debug.WriteLine("asdfafsd");
+                    }
+                    else if (bayes < 0)
+                    {
+                        Debug.WriteLine("asdfafsd");
+                    }
+
+                    //Debug.WriteLine("I: {0}, P: {1}, B: {2}", idioma.Nombre, palabraDoc.Key, bayes);
 
                     logSum += (Math.Log(1 - bayes) - Math.Log(bayes));
 
@@ -270,5 +289,6 @@ namespace LangDetector.Core
                 return idioma;
             }
         }
+
     }
 }
