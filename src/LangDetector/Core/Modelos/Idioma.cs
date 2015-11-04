@@ -8,7 +8,5 @@ namespace LangDetector.Core.Modelos
         public int CantidadDocumentos { get; set; }
         public int CantidadPalabras { get; set; }
         public int CantidadLetras { get; set; }
-        public int CantidadSignos { get; set; }
-        public int CantidadSimbolos { get; set; }
     }
 }

@@ -107,7 +107,6 @@
     <Compile Include="Core\Modelos\Documento.cs" />
     <Compile Include="Core\Modelos\DocumentoProcesado.cs" />
     <Compile Include="Core\Modelos\IdentificacionResultado.cs" />
-    <Compile Include="Core\Modelos\TipoLetra.cs" />
     <Compile Include="Core\Modelos\Idioma.cs" />
     <Compile Include="Core\Modelos\Letra.cs" />
     <Compile Include="Core\Modelos\Palabra.cs" />

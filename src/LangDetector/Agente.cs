@@ -42,7 +42,7 @@ namespace LangDetector
 
             var documentoProcesado = await ParsearDocumento();
 
-            if (documentoProcesado.CantidadLetras + documentoProcesado.CantidadSignos + documentoProcesado.CantidadSimbolos == 0)
+            if (documentoProcesado.Letras.Count == 0)
             {
                 throw new InvalidOperationException("El documento está vacío o contiene signos que el agente no puede procesar.");
             }
