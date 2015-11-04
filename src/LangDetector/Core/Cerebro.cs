@@ -103,7 +103,7 @@ namespace LangDetector.Core
                     double cantidadEnIdioma = palabra.Idiomas.ContainsKey(idioma.Nombre) ? palabra.Idiomas[idioma.Nombre] : 0;
 
                     double probabilidadPalabra = cantidadEnIdioma / idioma.CantidadDocumentos;
-                    double probabilidadInversa = (palabra.Cantidad - cantidadEnIdioma) / (Memoria.CantidadDocumentos - idioma.CantidadDocumentos);
+                    double probabilidadInversa = (palabra.Documentos - cantidadEnIdioma) / (Memoria.CantidadDocumentos - idioma.CantidadDocumentos);
 
                     if (probabilidadPalabra + probabilidadInversa == 0)
                     {
@@ -186,7 +186,7 @@ namespace LangDetector.Core
 
             if (palabra.Idiomas.ContainsKey(idioma.Nombre))
             {
-                palabra.Idiomas[idioma.Nombre] += cantidad;
+                palabra.Idiomas[idioma.Nombre] += 1;
             }
             else
             {
