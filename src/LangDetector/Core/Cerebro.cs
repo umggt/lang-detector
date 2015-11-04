@@ -94,7 +94,7 @@ namespace LangDetector.Core
                     double bayes = probabilidadPalabra / (probabilidadPalabra + probabilidadInversa);
 
 
-                    bayes = ((1 * 0.5) + (palabra.Cantidad * bayes)) / (1 + palabra.Cantidad);
+                    bayes = ((1 * 0.5) + (palabra.Documentos * bayes)) / (1 + palabra.Documentos);
 
                     if (bayes == 0)
                     {
@@ -131,7 +131,7 @@ namespace LangDetector.Core
                     double bayes = probabilidadLetra / (probabilidadLetra + probabilidadInversa);
 
 
-                    bayes = ((1 * 0.5) + (letra.Cantidad * bayes)) / (1 + letra.Cantidad);
+                    bayes = ((1 * 0.5) + (letra.Documentos * bayes)) / (1 + letra.Documentos);
 
                     if (bayes == 0)
                     {
@@ -182,7 +182,7 @@ namespace LangDetector.Core
             }
             else
             {
-                palabra = new Palabra { Texto = textPalabra, Cantidad = cantidad, Documentos = 1 };
+                palabra = new Palabra { Texto = textPalabra, Documentos = 1 };
                 Memoria.Palabras.Add(palabra.Texto, palabra);
                 Memoria.CantidadPalabras++;
             }
@@ -212,7 +212,7 @@ namespace LangDetector.Core
             }
             else
             {
-                letra = new Letra { Caracter = caracter, Cantidad = cantidad, Documentos = 1 };
+                letra = new Letra { Caracter = caracter, Documentos = 1 };
                 Memoria.Letras.Add(letra.Caracter, letra);
                 Memoria.CantidadLetras++;
             }

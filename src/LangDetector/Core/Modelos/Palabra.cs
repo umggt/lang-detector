@@ -5,7 +5,6 @@ namespace LangDetector.Core.Modelos
     class Palabra
     {
         public string Texto { get; set; }
-        public int Cantidad { get; set; }
         public int Documentos { get; set; }
 
         public SortedDictionary<string, int> Idiomas { get; set; }
