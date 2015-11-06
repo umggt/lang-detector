@@ -7,7 +7,6 @@ Proyecto para el curso de Inteligencia Artificial de la Carrera de Ingeniería e
 
 Nombre        | Carnet
 --------------|-------
-Cesar Mayol   |
 Jorge Barrera |
 Lucía Román   |
 Luis Liapan   |
