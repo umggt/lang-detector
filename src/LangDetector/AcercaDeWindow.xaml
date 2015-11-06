@@ -50,21 +50,18 @@
             <TextBlock Grid.Row="1" Grid.Column="0">090-03-4873</TextBlock>
             <TextBlock Grid.Row="1" Grid.Column="1">Miguel Román</TextBlock>
             <TextBlock Grid.Row="1" Grid.Column="2">miguelerm@gmail.com</TextBlock>
-            <TextBlock Grid.Row="2" Grid.Column="0">090-08-508</TextBlock>
-            <TextBlock Grid.Row="2" Grid.Column="1">Cesar Mayol</TextBlock>
-            <TextBlock Grid.Row="2" Grid.Column="2">cesarmayol@gmail.com</TextBlock>
-            <TextBlock Grid.Row="3" Grid.Column="0">0900-09-5974</TextBlock>
-            <TextBlock Grid.Row="3" Grid.Column="1">Pablo Pivaral</TextBlock>
-            <TextBlock Grid.Row="3" Grid.Column="2">pablo.piv@gmail.com</TextBlock>
-            <TextBlock Grid.Row="4" Grid.Column="0">090-10-11245</TextBlock>
-            <TextBlock Grid.Row="4" Grid.Column="1">Luis Liapan</TextBlock>
-            <TextBlock Grid.Row="4" Grid.Column="2">luis.liapan@gmail.com</TextBlock>
-            <TextBlock Grid.Row="5" Grid.Column="0">0900-10-12569</TextBlock>
-            <TextBlock Grid.Row="5" Grid.Column="1">Jorge Barrera</TextBlock>
-            <TextBlock Grid.Row="5" Grid.Column="2">george.barrerab@gmail.com</TextBlock>
-            <TextBlock Grid.Row="6" Grid.Column="0">0900-11-6552</TextBlock>
-            <TextBlock Grid.Row="6" Grid.Column="1">Josseline Román</TextBlock>
-            <TextBlock Grid.Row="6" Grid.Column="2">josselinelucia@gmail.com</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="0">0900-09-5974</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="1">Pablo Pivaral</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="2">pablo.piv@gmail.com</TextBlock>
+            <TextBlock Grid.Row="3" Grid.Column="0">090-10-11245</TextBlock>
+            <TextBlock Grid.Row="3" Grid.Column="1">Luis Liapan</TextBlock>
+            <TextBlock Grid.Row="3" Grid.Column="2">luis.liapan@gmail.com</TextBlock>
+            <TextBlock Grid.Row="4" Grid.Column="0">0900-10-12569</TextBlock>
+            <TextBlock Grid.Row="4" Grid.Column="1">Jorge Barrera</TextBlock>
+            <TextBlock Grid.Row="4" Grid.Column="2">george.barrerab@gmail.com</TextBlock>
+            <TextBlock Grid.Row="5" Grid.Column="0">0900-11-6552</TextBlock>
+            <TextBlock Grid.Row="5" Grid.Column="1">Josseline Román</TextBlock>
+            <TextBlock Grid.Row="5" Grid.Column="2">josselinelucia@gmail.com</TextBlock>
         </Grid>
         <Button Content="Cerrar" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" Click="Cerrar_Click"></Button>
     </Grid>

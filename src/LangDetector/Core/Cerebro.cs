@@ -150,7 +150,7 @@ namespace LangDetector.Core
                 {
                     Idioma = idioma.Nombre,
                     Certeza = 1 / (1 + Math.Exp(logSum)),
-                    Certeza2 = 1 / (1 + Math.Exp(logSum))
+                    Certeza2 = 1 / (1 + Math.Exp(logSum2))
                 });
             }
 
